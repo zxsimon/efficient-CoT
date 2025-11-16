@@ -1,5 +1,5 @@
 from datasets import load_dataset
-from common.utils import split_gsm8k
+from common.utils import split_gsm8k, BLUE, GREEN, RED, END
 import json, argparse
 from openai import OpenAI
 from tqdm import tqdm
@@ -13,8 +13,6 @@ args = args.parse_args()
 with open("prompts.jsonl", "r") as f:
     prompts = {prompt["approach"]: prompt["prompt"] for prompt in [json.loads(line) for line in f.readlines()]}
 approaches = list(prompts.keys()) if "all" in args.approach else args.approach
-
-# ------------- Functions -------------
 
 def load_and_process_dataset(ds_name, split = 'train', max_examples = 0):
     
@@ -47,11 +45,6 @@ def generate_completion(prompt, temperature = 0.0, max_tokens = 1000):
         res = None
     
     return res
-
-BLUE = "\033[94m"
-GREEN = "\033[92m"
-RED = "\033[91m"
-END = "\033[0m"
 
 def print_comparison(question, answer, original_reasoning, transformed_reasoning):
     print(f"{BLUE}Question: {question}.\nAnswer: {answer}{END}")

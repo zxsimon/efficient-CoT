@@ -1,4 +1,10 @@
 import torch, re, math
+import tinker
+
+BLUE = "\033[94m"
+GREEN = "\033[92m"
+RED = "\033[91m"
+END = "\033[0m"
 
 def extract_numerical_answer(completion):
     """
@@ -41,8 +47,9 @@ def extract_numerical_answer(completion):
     
     return float('nan')
 
+@torch.no_grad()
 def count_thinking_tokens(batch_ids, tokenizer, think_start = "<think>", think_end = "</think>"):
-
+    
     device = batch_ids.device
     think_start_id = tokenizer.encode(think_start, return_tensors="pt").squeeze().to(device)
     think_end_id = tokenizer.encode(think_end, return_tensors="pt").squeeze().to(device)
@@ -59,7 +66,11 @@ def count_thinking_tokens(batch_ids, tokenizer, think_start = "<think>", think_e
     
 
 def split_reasoning_text(answer_text, think_start = "<think>", think_end = "</think>"):
-    assert think_start in answer_text, f"Expected {think_start} in answer text, got {answer_text}"
+    
+    if think_start not in answer_text:
+        print(f"WARNING: No {think_start} found in answer text: {answer_text}")
+        return answer_text, None
+
     parts = answer_text.split(think_end)
     
     # No answer due to max reasoning length
@@ -68,7 +79,8 @@ def split_reasoning_text(answer_text, think_start = "<think>", think_end = "</th
     elif len(parts) == 2:
         answer = parts[1].strip()
     else:
-        raise ValueError(f"Expected 1 or 2 parts in answer text, got {len(parts)}. Raw answer text: {answer_text}")
+        print(f"WARNING: Expected 1 or 2 parts in answer text, got {len(parts)}. Raw answer text: {answer_text}")
+        return answer_text, None
     
     reasoning = parts[0].strip().strip(think_start).strip()
     return reasoning, answer
@@ -83,3 +95,22 @@ def split_gsm8k(example):
     example['reasoning'] = reasoning
     example['answer'] = answer
     return example
+
+def compute_mean_nll(
+    logprobs_list: list[tinker.TensorData], weights_list: list[tinker.TensorData]
+) -> float:
+    """Taken from tinker-cookbook: https://github.com/thinking-machines-lab/tinker-cookbook/blob/main/tinker_cookbook/supervised/common.py"""
+    total_weighted_logprobs = 0.0
+    total_weights = 0.0
+
+    for logprobs, weights in zip(logprobs_list, weights_list, strict=True):
+        logprobs_torch = logprobs.to_torch()
+        weights_torch = weights.to_torch()
+        total_weighted_logprobs += logprobs_torch.dot(weights_torch)
+        total_weights += weights_torch.sum()
+
+    if total_weights == 0:
+        print("WARNING: No valid weights found for NLL computation")
+        return float("nan")
+
+    return float(-total_weighted_logprobs / total_weights)

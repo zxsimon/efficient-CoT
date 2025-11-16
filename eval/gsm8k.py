@@ -4,7 +4,7 @@ import datasets, torch
 from tqdm import tqdm
 import code
 
-def generator_gsm8k(split="test", max_examples=0):
+def eval_generator_gsm8k(split="test", max_examples=0):
 
     gsm8k = datasets.load_dataset("openai/gsm8k", "main")[split].shuffle(seed=42)
     
@@ -28,10 +28,10 @@ def generator_gsm8k(split="test", max_examples=0):
         yield prompt, answer, reasoning
 
 @torch.no_grad()
-def evaluate_gsm8k(model, tokenizer, batch_size = 16, max_new_tokens = 1000, total_examples = 200, generator = None, reasoning = True, show = False):
+def evaluate_gsm8k(model, tokenizer, batch_size = 16, max_new_tokens = 1024, total_examples = 200, generator = None, reasoning = True, show = False):
 
     if generator is None:
-        generator = generator_gsm8k(max_examples=total_examples)
+        generator = eval_generator_gsm8k(max_examples=total_examples)
 
     total_evaluated = 0
     total_correct = 0
