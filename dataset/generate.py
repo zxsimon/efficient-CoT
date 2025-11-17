@@ -1,5 +1,5 @@
 from datasets import load_dataset
-from common.utils import split_gsm8k, BLUE, GREEN, RED, END
+from utils.utils import split_gsm8k, BLUE, GREEN, RED, END
 import json, argparse
 from openai import OpenAI
 from tqdm import tqdm

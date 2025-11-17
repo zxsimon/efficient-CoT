@@ -1,17 +1,15 @@
-import os, tinker, time, torch, json
+import os, tinker, time
 from tqdm import tqdm
-from datasets import load_dataset
 from dataclasses import dataclass, asdict
 from transformers import AutoTokenizer
 from pathlib import Path
-from common.utils import split_gsm8k, compute_mean_nll, BLUE, GREEN, RED, END, extract_numerical_answer, split_reasoning_text, count_thinking_tokens
-from common.checkpoint_utils import get_last_checkpoint, save_checkpoint
-from common.log_utils import Logger
-import code
+from utils.utils import compute_mean_nll
+from utils.checkpoint_utils import get_last_checkpoint, save_checkpoint
+from utils.log_utils import Logger
+from train.common import dataset_iterator, convert_to_datum, gsm8k_evaluator
 
 TINKER_API_KEY = os.getenv("TINKER_API_KEY")
 PROJECT_ROOT = Path(__file__).parent.parent
-dataset_dir = PROJECT_ROOT / "dataset"
 
 @dataclass
 class SFTConfig:
@@ -34,60 +32,6 @@ class SFTConfig:
     evaluate_count: int = 16
     print_count: int = 4
 
-
-# ---- Dataloader ----
-
-def dataset_iterator(dataset_name, split = "train", num_examples = 0):
-    
-    # GSM8K
-    if "gsm8k" in dataset_name:
-        if dataset_name == "gsm8k":
-            ds = load_dataset("openai/gsm8k", "main")[split].shuffle(seed=42)
-            ds = ds.map(split_gsm8k)
-            if num_examples:
-                ds = ds.select(range(num_examples))
-        
-        else:
-            if not (dataset_dir / f"{dataset_name}.jsonl").exists():
-                raise FileNotFoundError(f"Dataset {dataset_name} not found in {dataset_dir}")
-
-            with open(dataset_dir / f"{dataset_name}.jsonl", "r") as f:
-                ds = [json.loads(line) for line in f]
-
-    else:
-        raise ValueError(f"Dataset {dataset_name} not currently supported")
-
-    
-    def _iterator():
-        yield from ds
-    
-    return len(ds), _iterator()
-
-def convert_to_datum(example, tokenizer, reasoning_tag = "reasoning"):
-    prompt = f"<|im_start|>user\n{example['question']}<|im_end|>\n<|im_start|>assistant\n"
-    completion = f"<think>\n{example[reasoning_tag]}\n</think>\n{example['answer']}<|im_end|>\n"
-
-    prompt_tokens = tokenizer.encode(prompt)
-    prompt_weights = [0] * len(prompt_tokens)
-    completion_tokens = tokenizer.encode(completion)
-    completion_weights = [1] * len(completion_tokens)
- 
-    tokens = prompt_tokens + completion_tokens
-    weights = prompt_weights + completion_weights
- 
-    input_tokens = tokens[:-1]
-    target_tokens = tokens[1:]
-    weights = weights[1:]
- 
-    return tinker.types.Datum(
-        model_input=tinker.types.ModelInput.from_ints(tokens=input_tokens),
-        loss_fn_inputs=dict(weights=weights, target_tokens=target_tokens)
-    )
-
-def datum_to_encoded_prompt(datum):
-    idx = ((torch.tensor(datum.loss_fn_inputs["weights"].data, dtype = torch.int) - 1) * -1).sum().item() + 1
-    tokens = datum.model_input.chunks[0].tokens[:idx]
-    return tinker.types.ModelInput.from_ints(tokens)
 
 # ---- Training ----
 
@@ -135,7 +79,8 @@ def train_sft(config, allow_resume = True):
             base_model=config.model, rank=config.lora_rank
         )
         start_step = 0
-    print(f"Starting training from step {start_step}")
+    
+    print(f"Starting SFT training from step {start_step}")
 
     # Main training loop
     for step in tqdm(range(start_step, num_iters), total=num_iters, desc="Training"):
@@ -152,7 +97,7 @@ def train_sft(config, allow_resume = True):
                 name=f"{step:06d}",
                 log_path=log_dir,
                 kind="state",
-                loop_state={"batch": step},
+                loop_state={"step": step},
             )
         
         # Training step
@@ -162,7 +107,7 @@ def train_sft(config, allow_resume = True):
             print("Reached end of dataset. Reloading dataset.")
             _, train_loader = dataset_iterator(config.train_dataset_name, "train")
             batch = [next(train_loader) for _ in range(config.batch_size)]
-        converted_batch = [convert_to_datum(datum, tokenizer) for datum in batch]
+        converted_batch = [convert_to_datum(example, tokenizer) for example in batch]
         fwd_bwd_future = training_client.forward_backward(converted_batch, loss_fn="cross_entropy")
         optim_step_future = training_client.optim_step(adam_params)
         fwd_bwd_result = fwd_bwd_future.result()
@@ -221,47 +166,8 @@ def train_sft(config, allow_resume = True):
         
         # Sample on test set once in a while
         if final_step or (step % config.sample_every == 0 and step > 0):
-            start_time = time.time()
-            print(f"Sampling on test set at step {step}. Printing first {config.print_count} examples.")
-            num_correct = 0
-            reasoning_lens = []
             
-            try:
-                sample_batch = [next(test_loader) for _ in range(config.sample_count)]
-            except StopIteration:
-                print("Reached end of dataset. Reloading dataset.")
-                _, test_loader = dataset_iterator(config.test_dataset_name, "test")
-                sample_batch = [next(test_loader) for _ in range(config.sample_count)]
-            sampling_client = training_client.save_weights_and_get_sampling_client()
-
-            for i, example in enumerate(sample_batch):
-                datum = convert_to_datum(example, tokenizer)
-                prompt = datum_to_encoded_prompt(datum)
-                params = tinker.types.SamplingParams(max_tokens=1024, temperature=0.0)
-                future = sampling_client.sample(prompt=prompt, sampling_params=params, num_samples=1)
-                result = future.result()
-
-                result_text = tokenizer.decode(result.sequences[0].tokens)
-                _, pred = split_reasoning_text(result_text)
-                pred = extract_numerical_answer(pred)
-                answer = float(example['answer'].replace(',', ''))
-
-                if i < config.print_count:
-                    print(f"{RED}Example {i + 1} out of {len(sample_batch)} -- Correct answer: {example['answer']} -- Predicted answer: {pred}{END}")
-                    print(f"{BLUE}Prompt: {tokenizer.decode(prompt.chunks[0].tokens)}{END}")
-                    print(f"{GREEN}Response: {result_text}{END}")
-                
-                num_correct += answer == pred
-                tokens_tensor = torch.tensor([result.sequences[0].tokens])
-                reasoning_lens.append(count_thinking_tokens(tokens_tensor, tokenizer)[0].item())
-
-            sample_metrics.update(
-                step=step,
-                sample_count=len(sample_batch),
-                sample_correct=num_correct,
-                sample_reasoning_lens=reasoning_lens,
-                time_total=time.time() - start_time,
-            )
+            sample_metrics, test_loader = gsm8k_evaluator(step, config, training_client, tokenizer, test_loader)
             logger.log("sample", sample_metrics)
         
 
@@ -271,12 +177,13 @@ def train_sft(config, allow_resume = True):
         name="final",
         log_path=log_dir,
         kind="both",
-        loop_state={"batch": step},
+        loop_state={"step": step},
     )    
     
     print("Training Completed.")
     print(f"Total Training time: {time.time() - overall_start_time:.0f} seconds. Average time per iteration: {(time.time() - overall_start_time) / num_iters:.0f} seconds")
     print(f"Final step ({step}) training metrics: {metrics}")
+    print(f"Final test metrics: {test_metrics}")
     print(f"Final step ({step}) sample metrics: {sample_metrics}")
     print(f"Total tokens trained: {total_tokens_trained}. Total examples trained: {total_examples_trained}")
 

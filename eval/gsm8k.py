@@ -1,4 +1,4 @@
-from common.utils import split_gsm8k, split_reasoning_text, count_thinking_tokens, extract_numerical_answer
+from utils.utils import split_gsm8k, split_reasoning_text, count_thinking_tokens, extract_numerical_answer
 from itertools import islice
 import datasets, torch
 from tqdm import tqdm
@@ -15,15 +15,14 @@ def eval_generator_gsm8k(split="test", max_examples=0):
             print(f"{max_examples} examples requested from GSM8K, but only {len(gsm8k)} examples available. Using all examples.")
     
     gsm8k = gsm8k.map(split_gsm8k)
+    gsm8k_suffix = " Provide ONLY a numerical answer without units, without any other text, explanation, or punctuation."
 
     for example in gsm8k:
         question = example["question"]
         reasoning = example["reasoning"]
         answer = int(example["answer"].replace(',', ''))
         
-        prompt = f"<|im_start|>user\nAnswer the following question:\n{question}\n"
-        prompt += f"Output ONLY and IMMEDIATELY the final numerical answer and nothing else. Just the number. No other calculations, text, explanation, words, prefix, or punctuation."
-        prompt += "<|im_end|>\n<|im_start|>assistant\n"
+        prompt = f"<|im_start|>user\n{question}{gsm8k_suffix}\n<|im_start|>assistant\n"
 
         yield prompt, answer, reasoning
 

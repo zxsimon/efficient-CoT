@@ -8,7 +8,8 @@ END = "\033[0m"
 
 def extract_numerical_answer(completion):
     """
-    A very messy regex implementation to extract the numerical answer from a completion.
+    A very messy regex implementation to extract the numerical answer from a completion. 
+    Works fine for now, but needs to be further streamlined.
     In practice, shouldn't be an issue for larger models or post-SFT evaluation.
     """
     
@@ -27,6 +28,7 @@ def extract_numerical_answer(completion):
             return float('nan')
 
     patterns = [
+        r"\\boxed\{([-\d,\.]+)\}",                # LaTeX boxed: \boxed{42}
         r"####\s*([-\d,\.]+)",                    # GSM8K format: #### 42
         r"(?:answer is|answer:|=)\s*([-\d,\.]+)", # "answer is 42" or "= 42"
         r"^([-\d,\.]+)$",                         # Just a number
