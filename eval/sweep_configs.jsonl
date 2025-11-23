@@ -1,0 +1,6 @@
+{"checkpoint":"gsm8k_sm1_16_5e-4", "batch_size":8, "show":""}
+{"checkpoint":"gsm8k_sm1_16_1e-4", "batch_size":8, "show":""}
+{"checkpoint":"gsm8k_sm1_32_5e-4", "batch_size":8, "show":""}
+{"checkpoint":"gsm8k_sm1_32_1e-4", "batch_size":8, "show":""}
+{"checkpoint":"gsm8k_sm1_64_5e-4", "batch_size":8, "show":""}
+{"checkpoint":"gsm8k_sm1_64_1e-4", "batch_size":8, "show":""}
