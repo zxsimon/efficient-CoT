@@ -1,10 +1,18 @@
+from collections import Counter
 import torch, re, math
 import tinker
+from dataclasses import dataclass
 
-BLUE = "\033[94m"
-GREEN = "\033[92m"
-RED = "\033[91m"
-END = "\033[0m"
+GMS8K_SUFFIX = " Provide ONLY a final numerical answer, with no explanation, no units, no punctuation, and no other text."
+
+DROP_SUFFIX = " Provide ONLY a concise final answer, with no explanation, no punctuation, and no other text."
+
+@dataclass
+class Colors:
+    BLUE: str = "\033[94m"
+    GREEN: str = "\033[92m"
+    RED: str = "\033[91m"
+    END: str = "\033[0m"
 
 def extract_numerical_answer(completion):
     """
@@ -79,13 +87,56 @@ def split_reasoning_text(answer_text, think_start = "<think>", think_end = "</th
     if len(parts) == 1:
         answer = None
     elif len(parts) == 2:
-        answer = parts[1].strip()
+        answer = parts[1].strip().replace("<|im_end|>", "").strip()
     else:
         print(f"WARNING: Expected 1 or 2 parts in answer text, got {len(parts)}. Raw answer text: {answer_text}")
         return answer_text, None
     
     reasoning = parts[0].strip().strip(think_start).strip()
+
     return reasoning, answer
+
+
+def normalize_f1_answer(text):
+    
+    if not isinstance(text, str):
+        return text
+
+    text = text.lower().strip()
+    
+    text = re.sub(r'(\d),(\d)', r'\1\2', text)
+    text = re.sub(r'(\d),(\d)', r'\1\2', text)
+    text = re.sub(r'(\d),(\d)', r'\1\2', text)
+    
+    text = re.sub(r'%$', '', text)
+    text = re.sub(r'\$$', '', text)
+    text = re.sub(r'\s*(percent|percentage)$', '', text)
+    text = ' '.join(text.split())
+    
+    return text
+
+def f1_score(completion, answer):
+
+    if not isinstance(completion, str):
+        return 0
+
+    pred_tokens = normalize_f1_answer(completion).split()
+    gt_tokens = normalize_f1_answer(answer).split()
+
+    if len(pred_tokens) == 0 or len(gt_tokens) == 0:
+        return 0
+
+    common = Counter(pred_tokens) & Counter(gt_tokens)
+    num_common = sum(common.values())
+
+    if num_common == 0:
+        return 0.0
+
+    precision = num_common / len(pred_tokens)
+    recall = num_common / len(gt_tokens)
+    f1 = 2 * (precision * recall) / (precision + recall)
+    
+    return f1
 
 
 def split_gsm8k(example):
@@ -98,9 +149,17 @@ def split_gsm8k(example):
     example['answer'] = answer
     return example
 
+def process_drop(example):
+    res = {}
+    res['question'] = f"{example['passage']} {example['question']}"
+    res['answer'] = example['answers_spans']['spans'][0]
+    res['answer_type'] = example['answers_spans']['types'][0]
+    res['context_id'] = example['section_id']
+    return res
+
+
 def compute_mean_nll(
-    logprobs_list: list[tinker.TensorData], weights_list: list[tinker.TensorData]
-) -> float:
+    logprobs_list: list[tinker.TensorData], weights_list: list[tinker.TensorData]) -> float:
     """Taken from tinker-cookbook: https://github.com/thinking-machines-lab/tinker-cookbook/blob/main/tinker_cookbook/supervised/common.py"""
     total_weighted_logprobs = 0.0
     total_weights = 0.0
@@ -116,3 +175,8 @@ def compute_mean_nll(
         return float("nan")
 
     return float(-total_weighted_logprobs / total_weights)
+
+def calculate_dataset_reasoning_length(fp):
+    # TODO: Implement this
+    pass
+    

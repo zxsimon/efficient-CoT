@@ -8,7 +8,7 @@ from transformers import AutoTokenizer
 from pathlib import Path
 from utils.checkpoint_utils import get_last_checkpoint, save_checkpoint
 from utils.log_utils import Logger
-from train.common import dataset_iterator, convert_to_datum, datum_to_encoded_prompt, gsm8k_evaluator, get_gsm8k_reward
+from train.common import dataset_iterator, convert_to_datum, datum_to_encoded_prompt, evaluator, get_reward
 import code
 
 TINKER_API_KEY = os.getenv("TINKER_API_KEY")
@@ -19,32 +19,38 @@ class RLConfig:
     log_dir_prefix: str = "logs/rl"
     sft_dir_prefix: str = "logs/sft"
     model: str = "Qwen/Qwen3-8B"
-    train_dataset_name: str = "gsm8k"
-    test_dataset_name: str = "gsm8k"
+    dataset_name: str = "gsm8k"
     
-    batch_size: int = 16
+    batch_size: int = 32
     group_size: int = 16
     learning_rate: float = 5e-4
-    num_epochs: int = 1
-    max_iters: int = 10
+    num_epochs: int = 3
+    max_iters: int = 1000
     
-    load_sft_model: str = "32_gsm8k"
+    load_sft_model: str = "gsm8k_sm1_32"
     lora_rank: int = 32
     
     save_every: int = 100
-    sample_every: int = 5
-    sample_count: int = 4
     evaluate_every: int = 5
-    evaluate_count: int = 16
+    sample_count: int = 20
     print_count: int = 4
 
-    gsm8k_penalizer: float = 0.0005
-    gsm8k_penalize_correct_only: bool = True
+    f1_threshold: float = 0.8
+    max_penalty: float = 1
+    penalize_correct_only: bool = True
+    penalizer_max_reasoning_tokens: int = 100
 
 
 # ---- Training ----
 
 def train_rl(config, allow_resume = True):
+
+    if "gsm8k" in config.dataset_name:
+        ds_type = "gsm8k"
+    elif "drop" in config.dataset_name:
+        ds_type = "drop"
+    else:
+        raise ValueError(f"Evaluator is not configured for dataset {config.dataset_name}")
 
     # Run statistics
     overall_start_time = time.time()
@@ -52,9 +58,9 @@ def train_rl(config, allow_resume = True):
     
     # Initialize logger and file paths
     if config.load_sft_model:
-        run_name = f"SFT_{config.load_sft_model}_{config.train_dataset_name}"
+        run_name = f"SFT_{config.dataset_name}_{config.load_sft_model}"
     else:
-        run_name = f"{config.lora_rank}_{config.train_dataset_name}"
+        run_name = f"{config.dataset_name}_{config.lora_rank}"
 
     log_dir = PROJECT_ROOT / config.log_dir_prefix / run_name
     sft_dir = PROJECT_ROOT / config.sft_dir_prefix / config.load_sft_model
@@ -66,8 +72,8 @@ def train_rl(config, allow_resume = True):
     adam_params = tinker.AdamParams(learning_rate=config.learning_rate)
 
     # Load data
-    train_len, train_loader = dataset_iterator(config.train_dataset_name, "train")
-    test_len, test_loader = dataset_iterator(config.test_dataset_name, "test")
+    train_len, train_loader = dataset_iterator(config.dataset_name, "train")
+    test_len, test_loader = dataset_iterator(config.dataset_name, "test")
     iters_per_epoch = train_len // config.batch_size
     num_iters = config.num_epochs * iters_per_epoch
     if num_iters > config.max_iters:
@@ -75,8 +81,9 @@ def train_rl(config, allow_resume = True):
     print(f"Loaded {train_len} examples for training. 1 epoch will run for {iters_per_epoch} iterations.")
     print(f"Loaded {test_len} examples for testing.")
 
-    # Load clients
+    # Load clients and params
     service_client = tinker.ServiceClient()
+    sampling_params = types.SamplingParams(max_tokens=1024, stop="<|im_end|>")
 
     # Look for checkpoints
     resume_info = get_last_checkpoint(log_dir) if allow_resume else None
@@ -85,7 +92,7 @@ def train_rl(config, allow_resume = True):
         training_client = service_client.create_training_client_from_state(
             resume_info["state_path"]
         )
-        start_step = resume_info["step"]
+        start_step = resume_info["step"] + 1
         print(f"Checkpoint found. Resuming RL training from step {start_step}")
     elif config.load_sft_model:
         start_step = 0
@@ -109,7 +116,6 @@ def train_rl(config, allow_resume = True):
     for step in tqdm(range(start_step, num_iters), total=num_iters, desc="Training"):
         start_time = time.time()
         metrics = {}
-        sample_metrics = {}
         test_metrics = {}
         final_step = step == num_iters - 1
 
@@ -127,7 +133,7 @@ def train_rl(config, allow_resume = True):
         sampling_client = service_client.create_sampling_client(model_path=sampling_path)
 
         training_datums: list[types.Datum] = []
-        batch_corrects: list[int] = []
+        batch_scores: list[int] = []
         batch_reasoning_lens: list[int] = []
         batch_rewards: list[float] = []
         batch_futures: list[list[Future[types.SampleResponse]]] = []
@@ -138,18 +144,17 @@ def train_rl(config, allow_resume = True):
             batch = [next(train_loader) for _ in range(config.batch_size)]
         except StopIteration:
             print("Reached end of dataset. Reloading dataset.")
-            _, train_loader = dataset_iterator(config.train_dataset_name, "train")
+            _, train_loader = dataset_iterator(config.dataset_name, "train")
             batch = [next(train_loader) for _ in range(config.batch_size)]
         
         for example in batch:
             datum = convert_to_datum(example, tokenizer)
             model_input = datum_to_encoded_prompt(datum)
             prompt_tokens = model_input.to_ints()
-            params = types.SamplingParams(max_tokens=1024, temperature=0.0)
 
             sample_futures: list[Future[types.SampleResponse]] = []
             for _ in range(config.group_size):
-                future = sampling_client.sample(prompt=model_input, sampling_params=params, num_samples=1)
+                future = sampling_client.sample(prompt=model_input, sampling_params=sampling_params, num_samples=1)
                 sample_futures.append(future)
 
             batch_futures.append(sample_futures)
@@ -175,8 +180,18 @@ def train_rl(config, allow_resume = True):
                 group_ob_lens.append(len(prompt_tokens) - 1)
                 group_logprobs.append(sampled_logprobs)
 
-                result = get_gsm8k_reward(sample_result, answer, tokenizer, config.gsm8k_penalizer, config.gsm8k_penalize_correct_only)
-                batch_corrects.append(result["correct"])
+                result = get_reward(
+                    ds_type, 
+                    sample_result, 
+                    answer, 
+                    tokenizer, 
+                    max_penalty=config.max_penalty, 
+                    penalize_correct_only=config.penalize_correct_only, 
+                    f1_threshold=config.f1_threshold,
+                    max_reasoning_tokens=config.penalizer_max_reasoning_tokens
+                    )
+                
+                batch_scores.append(result["score"])
                 batch_reasoning_lens.append(result["reasoning_len"])
                 group_rewards.append(result["reward"])
 
@@ -230,7 +245,7 @@ def train_rl(config, allow_resume = True):
             num_examples=len(batch),
             learning_rate=config.learning_rate,
             train_mean_reward=sum(batch_rewards) / len(batch_rewards),
-            train_mean_correct=sum(batch_corrects) / len(batch_corrects),
+            train_mean_score=sum(batch_scores) / len(batch_scores),
             train_mean_reasoning_len=sum(batch_reasoning_lens) / len(batch_reasoning_lens),
             progress=step / num_iters,
             time_total=time.time() - start_time,
@@ -238,59 +253,10 @@ def train_rl(config, allow_resume = True):
         logger.log("train", metrics)
         
         # Evaluate on test set once in a while
-        if final_step or (step % config.evaluate_every == 0 and step > 0):
-            start_time = time.time()
-            print(f"Evaluating on test set at step {step}.")
-            try:
-                batch = [next(test_loader) for _ in range(config.evaluate_count)]
-            except StopIteration:
-                print("Reached end of dataset. Reloading dataset.")
-                _, test_loader = dataset_iterator(config.test_dataset_name, "test")
-                batch = [next(test_loader) for _ in range(config.evaluate_count)]
-        
-            test_batch_futures: list[list[Future[types.SampleResponse]]] = []
-            test_batch_corrects: list[int] = []
-            test_batch_reasoning_lens: list[int] = []
-            test_batch_rewards: list[float] = []
+        if final_step or step % config.evaluate_every == 0:
             
-            for example in batch:
-                datum = convert_to_datum(example, tokenizer)
-                model_input = datum_to_encoded_prompt(datum)
-                params = types.SamplingParams(max_tokens=1024, temperature=0.0)
-
-                sample_futures: list[Future[types.SampleResponse]] = []
-                for _ in range(config.group_size):
-                    future = sampling_client.sample(prompt=model_input, sampling_params=params, num_samples=1)
-                    sample_futures.append(future)
-
-                test_batch_futures.append(sample_futures)
-
-            test_batch_answers = [example["answer"] for example in batch]
-
-            for sample_futures, answer in zip(
-                test_batch_futures, test_batch_answers
-            ):
-                for future in sample_futures:
-                    sample_result = future.result()
-                    result = get_gsm8k_reward(sample_result, answer, tokenizer, config.gsm8k_penalizer, config.gsm8k_penalize_correct_only)
-                    test_batch_corrects.append(result["correct"])
-                    test_batch_reasoning_lens.append(result["reasoning_len"])
-                    test_batch_rewards.append(result["reward"])
-
-            test_metrics.update(
-                step=step,
-                num_examples=len(batch),
-                test_mean_reward=sum(test_batch_rewards) / len(test_batch_rewards),
-                test_mean_correct=sum(test_batch_corrects) / len(test_batch_corrects),
-                test_mean_reasoning_len=sum(test_batch_reasoning_lens) / len(test_batch_reasoning_lens),
-                time_total=time.time() - start_time,
-            )
+            test_metrics, test_loader = evaluator(ds_type, step, config, training_client, tokenizer, test_loader)
             logger.log("test", test_metrics)
-
-        # Sample on test set once in a while. Only for viewing purposes.
-        if final_step or (step % config.sample_every == 0 and step > 0):
-            
-            _, test_loader = gsm8k_evaluator(step, config, training_client, tokenizer, test_loader)
         
 
     # Save final checkpoint

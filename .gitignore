@@ -2,3 +2,9 @@ notes.md
 __pycache__/
 .DS_Store
 logs/
+.env
+checkpoints/
+dataset/*.jsonl
+dataset/archived
+report.md
+results
