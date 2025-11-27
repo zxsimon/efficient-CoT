@@ -10,8 +10,8 @@ from pathlib import Path
 
 args = argparse.ArgumentParser()
 args.add_argument("--model", type=str, default="Qwen/Qwen3-8B")
-args.add_argument("--checkpoint", type=str, default=None)
-args.add_argument("--reasoning", action="store_true", default=True)
+args.add_argument("--checkpoint", type=str, default=None, help = "must exist in checkpoints/ e.g. gsm8k_sm1_32_0.0005")
+args.add_argument("--no_reasoning", action="store_true", default=False)
 args.add_argument("--batch_size", type=int, default=4)
 args.add_argument("--total_examples", type=int, default=0)
 args.add_argument("--show", action="store_true", default=False)
@@ -142,10 +142,15 @@ def evaluate(model, tokenizer, dataset, batch_size = 16, max_new_tokens = 1024, 
 
 if __name__ == "__main__":
 
+    reasoning = not args.no_reasoning
+
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     model = load_model()
-    run_name=args.checkpoint if args.checkpoint else f"{args.dataset}_{args.model.split('/')[-1]}_{args.reasoning}"
+    run_name=args.checkpoint if args.checkpoint else f"{args.dataset}_{args.model.split('/')[-1]}_{reasoning}"
     logger = Logger(project_name="eval", run_name=run_name, log_dir=PROJECT_ROOT / "logs" / "eval")
+    
+    print(f"Evaluating {args.checkpoint if args.checkpoint else args.model} on {args.dataset} with batch size {args.batch_size}.")
+    print(f"Device: {model.device}")
     
     if model.device.type == "mps":
         model.set_attn_implementation("eager")
@@ -177,11 +182,14 @@ if __name__ == "__main__":
         "reason_lens": reason_lens.tolist(),
     })
 
-    reason_lens_mean = reason_lens.mean().item()
-    reason_lens_std = reason_lens.std().item()
-    reason_lens_min = reason_lens.min().item()
-    reason_lens_max = reason_lens.max().item()
     print(f"Evaluation completed for model: {args.checkpoint if args.checkpoint else args.model}.")
     print(f"Total evaluated: {total_evaluated}.")
     print(f"Pass@1 score: {sum(scores) / total_evaluated:.2f}")
-    print(f"Reasoning length: {reason_lens_mean:.0f} ± {reason_lens_std:.0f} (min: {reason_lens_min:.0f}, max: {reason_lens_max:.0f})")
+    
+    if args.reasoning:
+    
+        reason_lens_mean = reason_lens.mean().item()
+        reason_lens_std = reason_lens.std().item()
+        reason_lens_min = reason_lens.min().item()
+        reason_lens_max = reason_lens.max().item()
+        print(f"Reasoning length: {reason_lens_mean:.0f} ± {reason_lens_std:.0f} (min: {reason_lens_min:.0f}, max: {reason_lens_max:.0f})")

@@ -15,17 +15,20 @@ TINKER_API_KEY = os.getenv("TINKER_API_KEY")
 PROJECT_ROOT = Path(__file__).parent.parent
 
 args = argparse.ArgumentParser()
-args.add_argument("--dataset", type=str, default=None)
-args.add_argument("--resume", action="store_true", default=False)
+args.add_argument("--dataset", type=str, default=None, help = "must exist in dataset/ e.g. gsm8k_sm1, drop_cipher1, etc.")
+args.add_argument("--resume", action="store_true", default=False, help = "Permits resuming training from last checkpoint, if available.")
 args.add_argument("--lr", type=float, default=5e-4)
 args.add_argument("--rank", type=int, default=32)
+args.add_argument("--batch_size", type=int, default=32)
+args.add_argument("--num_epochs", type=int, default=5)
+args.add_argument("--max_iters", type=int, default=None)
 args = args.parse_args()
 
 @dataclass
 class SFTConfig:
     log_dir_prefix: str = "logs/sft"
     model: str = "Qwen/Qwen3-8B"
-    dataset_name: str = "gsm8k_sm1"
+    dataset_name: str = "drop_empty"
     
     batch_size: int = 32
     learning_rate: float = 5e-4
@@ -219,9 +222,15 @@ if __name__ == "__main__":
     
     if args.dataset is not None:
         config.dataset_name = args.dataset
+    else:
+        print(f"No dataset specified. Defaulting to {config.dataset_name}.")
     config.learning_rate = args.lr
     config.lora_rank = args.rank
-
+    config.batch_size = args.batch_size
+    config.num_epochs = args.num_epochs
+    if args.max_iters is not None:
+        config.max_iters = args.max_iters
+    
     print(f"Training SFT for dataset {config.dataset_name} with learning rate {config.learning_rate} and rank {config.lora_rank}")
     
     train_sft(config, allow_resume=args.resume)

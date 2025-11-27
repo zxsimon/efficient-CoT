@@ -4,7 +4,6 @@ __pycache__/
 logs/
 .env
 checkpoints/
-dataset/*.jsonl
-dataset/archived
-report.md
-results
+*.zip
+*.key
+archived

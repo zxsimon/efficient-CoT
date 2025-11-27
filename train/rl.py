@@ -1,4 +1,5 @@
-import os, tinker, time, torch
+import os, tinker, time, torch, argparse
+from dotenv import load_dotenv
 from concurrent.futures import Future
 from tinker import types
 from tinker.types.tensor_data import TensorData
@@ -9,36 +10,54 @@ from pathlib import Path
 from utils.checkpoint_utils import get_last_checkpoint, save_checkpoint
 from utils.log_utils import Logger
 from train.common import dataset_iterator, convert_to_datum, datum_to_encoded_prompt, evaluator, get_reward
-import code
 
+load_dotenv()
 TINKER_API_KEY = os.getenv("TINKER_API_KEY")
 PROJECT_ROOT = Path(__file__).parent.parent
+
+args = argparse.ArgumentParser()
+args.add_argument("--dataset", type=str, default=None, choices=["gsm8k", "drop"])
+args.add_argument("--model", type=str, default=None, help = "must exist in logs/sft/ e.g. gsm8k_sm1_32_0.0005")
+args.add_argument("--loss_fn", type=str, default="ppo", choices=["ppo", "importance_sampling"])
+args.add_argument("--resume", action="store_true", default=False, help = "Permits resuming training from last checkpoint, if available.")
+args.add_argument("--lr", type=float, default=1e-4)
+args.add_argument("--batch_size", type=int, default=32)
+args.add_argument("--group_size", type=int, default=16)
+args.add_argument("--num_epochs", type=int, default=1)
+args.add_argument("--f1_threshold", type=float, default=0.8)
+args.add_argument("--max_penalty", type=float, default=1)
+args.add_argument("--penalize_all", action="store_true", default=False)
+args.add_argument("--penalizer_max_reasoning_tokens", type=int, default=None)
+args = args.parse_args()
+
 
 @dataclass
 class RLConfig:
     log_dir_prefix: str = "logs/rl"
     sft_dir_prefix: str = "logs/sft"
     model: str = "Qwen/Qwen3-8B"
-    dataset_name: str = "gsm8k"
+    dataset_name: str = "drop"
+    loss_fn: str = "ppo"
     
     batch_size: int = 32
     group_size: int = 16
-    learning_rate: float = 5e-4
-    num_epochs: int = 3
-    max_iters: int = 1000
+    learning_rate: float = 1e-4
+    num_epochs: int = 1
+    max_iters: int = 300
+    early_stop_threshold: float = 0.25
     
-    load_sft_model: str = "gsm8k_sm1_32"
+    load_sft_model: str = ""
     lora_rank: int = 32
     
-    save_every: int = 100
-    evaluate_every: int = 5
+    save_every: int = 25
+    evaluate_every: int = 10
     sample_count: int = 20
     print_count: int = 4
 
     f1_threshold: float = 0.8
     max_penalty: float = 1
     penalize_correct_only: bool = True
-    penalizer_max_reasoning_tokens: int = 100
+    penalizer_max_reasoning_tokens: int = 700
 
 
 # ---- Training ----
@@ -55,12 +74,13 @@ def train_rl(config, allow_resume = True):
     # Run statistics
     overall_start_time = time.time()
     total_examples_trained = 0
+    reward_window = []
     
     # Initialize logger and file paths
     if config.load_sft_model:
-        run_name = f"SFT_{config.dataset_name}_{config.load_sft_model}"
+        run_name = f"SFT_{config.dataset_name}_{config.load_sft_model}_{config.loss_fn}_{config.learning_rate}_{config.penalizer_max_reasoning_tokens}"
     else:
-        run_name = f"{config.dataset_name}_{config.lora_rank}"
+        run_name = f"{config.dataset_name}_{config.lora_rank}_{config.loss_fn}_{config.learning_rate}_{config.penalizer_max_reasoning_tokens}"
 
     log_dir = PROJECT_ROOT / config.log_dir_prefix / run_name
     sft_dir = PROJECT_ROOT / config.sft_dir_prefix / config.load_sft_model
@@ -73,13 +93,17 @@ def train_rl(config, allow_resume = True):
 
     # Load data
     train_len, train_loader = dataset_iterator(config.dataset_name, "train")
-    test_len, test_loader = dataset_iterator(config.dataset_name, "test")
+    # For DROP, we want to load a holdout set for sampling to avoid bias
+    if ds_type == "drop":
+        sample_len, sample_loader = dataset_iterator(config.dataset_name, "sample")
+    else:
+        sample_len, sample_loader = dataset_iterator(config.dataset_name, "test")
     iters_per_epoch = train_len // config.batch_size
     num_iters = config.num_epochs * iters_per_epoch
     if num_iters > config.max_iters:
         num_iters = config.max_iters
     print(f"Loaded {train_len} examples for training. 1 epoch will run for {iters_per_epoch} iterations.")
-    print(f"Loaded {test_len} examples for testing.")
+    print(f"Loaded {sample_len} examples for testing.")
 
     # Load clients and params
     service_client = tinker.ServiceClient()
@@ -231,7 +255,7 @@ def train_rl(config, allow_resume = True):
         
         # Training step: Forward-backward pass
         fwd_bwd_future = training_client.forward_backward(
-            training_datums, loss_fn="importance_sampling"
+            training_datums, loss_fn=config.loss_fn
         )
         optim_step_future = training_client.optim_step(adam_params)
         _fwd_bwd_result = fwd_bwd_future.result()
@@ -255,8 +279,15 @@ def train_rl(config, allow_resume = True):
         # Evaluate on test set once in a while
         if final_step or step % config.evaluate_every == 0:
             
-            test_metrics, test_loader = evaluator(ds_type, step, config, training_client, tokenizer, test_loader)
+            test_metrics, sample_loader = evaluator(ds_type, step, config, training_client, tokenizer, sample_loader)
             logger.log("test", test_metrics)
+
+        reward_window.append(metrics["train_mean_reward"])
+        if len(reward_window) > 10:
+            reward_window.pop(0)
+        if len(reward_window) == 10 and all(r < config.early_stop_threshold for r in reward_window):
+            print(f"Early stopping: All 10 past rewards below threshold {config.early_stop_threshold}")
+            break
         
 
     # Save final checkpoint
@@ -279,4 +310,34 @@ config = RLConfig()
 tokenizer = AutoTokenizer.from_pretrained(config.model)
 
 if __name__ == "__main__":
-    train_rl(config, allow_resume=False)
+    
+    if args.model is not None:
+        config.load_sft_model = args.model
+    else:
+        print(f"No model specified. Defaulting to {config.load_sft_model}.")
+    
+    if args.dataset is not None:
+        config.dataset_name = args.dataset
+    else:
+        if "gsm8k" in config.load_sft_model:
+            config.dataset_name = "gsm8k"
+        elif "drop" in config.load_sft_model:
+            config.dataset_name = "drop"
+        else:
+            raise ValueError(f"Dataset not specified and not found in {config.load_sft_model}")
+
+    config.learning_rate = args.lr
+    config.batch_size = args.batch_size
+    config.group_size = args.group_size
+    config.num_epochs = args.num_epochs
+    config.f1_threshold = args.f1_threshold
+    config.max_penalty = args.max_penalty
+    config.penalize_correct_only = not args.penalize_all
+    if args.penalizer_max_reasoning_tokens is not None:
+        config.penalizer_max_reasoning_tokens = args.penalizer_max_reasoning_tokens
+    else:
+        print(f"No max reasoning tokens specified. Defaulting to {config.penalizer_max_reasoning_tokens}.")
+    
+    print(f"Training RL for dataset {config.dataset_name} with model {config.load_sft_model if config.load_sft_model else config.model} and learning rate {config.learning_rate}")
+    
+    train_rl(config, allow_resume=args.resume)

@@ -12,7 +12,7 @@ dataset_dir = PROJECT_ROOT / "dataset"
 args = argparse.ArgumentParser()
 args.add_argument("--approach", type=str, nargs='+', default=["all"])
 args.add_argument("--dataset", type=str, default="gsm8k", choices=["gsm8k", "drop"])
-args.add_argument("--overwrite", action="store_true", default=True)
+args.add_argument("--overwrite", action="store_true", default=False)
 args.add_argument("--split", type=str, nargs='+', default=["train", "test"], choices=["train", "test"])
 args = args.parse_args()
 

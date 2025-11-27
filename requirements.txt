@@ -1,0 +1,12 @@
+tinker
+torch
+transformers
+peft
+datasets
+pandas
+openai
+numpy
+matplotlib
+tqdm
+python-dotenv
+hf-transfer

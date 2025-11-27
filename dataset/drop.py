@@ -53,8 +53,6 @@ def create_drop_reasoning_dataset(restart_index = None, reset_file = False):
 
             f.write(json.dumps({'question': question, 'answer': answer, 'answer_type': answer_type, 'id': context_id, 'completion': completion, 'f1': f1}) + '\n')
 
-
-
 def extract_answer(completion):
     pattern = r'<answer>(.*?)</answer>'
     match = re.search(pattern, completion, re.DOTALL)

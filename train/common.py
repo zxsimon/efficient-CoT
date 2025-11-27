@@ -1,7 +1,7 @@
 from utils.utils import extract_numerical_answer, split_reasoning_text, count_thinking_tokens, split_gsm8k, Colors, GMS8K_SUFFIX, DROP_SUFFIX, f1_score, process_drop
 from datasets import load_dataset
 from pathlib import Path
-import json, tinker, torch, time
+import json, torch, time
 from tinker import types
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -101,6 +101,8 @@ def evaluator(dataset_name, step, config, training_client, tokenizer, test_loade
     print(f"Sampling on test set at step {step}. Printing first {config.print_count} examples.")
     total_score = 0
     reasoning_lens = []
+    futures = []
+
     
     try:
         sample_batch = [next(test_loader) for _ in range(config.sample_count)]
@@ -116,6 +118,10 @@ def evaluator(dataset_name, step, config, training_client, tokenizer, test_loade
         datum = convert_to_datum(example, tokenizer)
         prompt = datum_to_encoded_prompt(datum)
         future = sampling_client.sample(prompt=prompt, sampling_params=params, num_samples=1)
+        futures.append(future)
+        
+    for i, (example, future) in enumerate(zip(sample_batch, futures)):
+    
         result = future.result()
 
         result_text = tokenizer.decode(result.sequences[0].tokens)
@@ -134,7 +140,7 @@ def evaluator(dataset_name, step, config, training_client, tokenizer, test_loade
             print(f"{Colors.RED}Example {i + 1} out of {len(sample_batch)} -- Correct answer: {example['answer']} -- Predicted answer: {pred}{Colors.END}")
             print(f"{Colors.BLUE}Prompt: {tokenizer.decode(prompt.chunks[0].tokens)}{Colors.END}")
             print(f"{Colors.GREEN}Response: {result_text}{Colors.END}")
-        
+    
         total_score += score
         tokens_tensor = torch.tensor([result.sequences[0].tokens])
         reasoning_lens.append(count_thinking_tokens(tokens_tensor, tokenizer)[0].item())
