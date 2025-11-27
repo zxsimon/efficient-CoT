@@ -168,7 +168,7 @@ For each dataset, we evaluate our compressed reasoning approaches against severa
 All SFT configurations use identical training procedures and hyperparameters for fair comparison. The zero-shot baselines allow us to measure the value of fine-tuning, while comparisons between SFT variants isolate the effects of reasoning content and compression.
 
 
-# **4\. Results and Discussion**
+# **4. Results and Discussion**
 
 ### Overall Results
 
@@ -207,484 +207,128 @@ These results establish that compressed reasoning is both feasible and efficient
 
 Here we present a few example model outputs from test set (click on each to expand). 
 
-####
 <details>
-<summary><strong>Example 1: Mathematical Reasoning (GSM8k) - All Correct</strong></summary>
+<summary><strong>Example 1: Mathematical Reasoning (GSM8k) - All Correct ✅</strong></summary>
 
-<div style="background-color: #f6f8fa; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 6px;">
+---
 
-<h3 style="color: #24292e; margin-top: 0;">✅ Example 1: Mathematical Reasoning</h3>
+**Question:**
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 10px;">Question:</p>
-<div style="background-color: white; padding: 10px; border-radius: 4px; margin: 10px 0; color: #24292e;">
-Zaid spends 1/4 of his salary on rent, 1/3 on car fuel and donates half of the remaining amount to his favorite charity. He gives his daughter 200$ to use for her weekly expenses and 700$ to his wife to budget for groceries and other household goods. If Zaid earns 6000$ per month, how much money will he still have after all these expenses and donations? Provide ONLY a final numerical answer, with no explanation, no units, no punctuation, and no other text.
-</div>
+> Zaid spends 1/4 of his salary on rent, 1/3 on car fuel and donates half of the remaining amount to his favorite charity. He gives his daughter 200$ to use for her weekly expenses and 700$ to his wife to budget for groceries and other household goods. If Zaid earns 6000$ per month, how much money will he still have after all these expenses and donations? Provide ONLY a final numerical answer, with no explanation, no units, no punctuation, and no other text.
 
-<p style="color: #24292e;"><strong>Ground Truth:</strong> 350</p>
+**Ground Truth:** 350
 
-<table style="width: 100%; margin: 15px 0;">
-<tr>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
+---
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Human-Readable CoT</p>
-<div style="background-color: #fff3cd; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-When Zaid spend 1/4 of his salary on rent, he parts with 1/4*$6000 = $<<1/4*6000=1500>>1500
-Car fuel will cost him 1/3*$6000 = $<<1/3*6000=2000>>2000
-Total expenses amount to $2000+$1500 = $<<2000+1500=3500>>3500
-Car fuel and rent expenses combined amount to $3500
-When he subtracts these expenses from his salary, he remains with $6000-$3500 = $<<6000-3500=2500>>2500
-He donates half of the remaining amount, which totals 1/2*$2500 = $<<1/2*2500=1250>>1250
-The total expenses and donations amount to $1250+$3500 = $<<1250+3500=4750>>4750
-When Zaid subtracts his expenses and donations from his salary, he remains with $6000-$4750 = $<<6000-4750=1250>>1250
-He also gives his daughter $200, reducing the amount to $1250-$200 = $<<1250-200=1050>>1050
-Finally, after giving his wife $700, Zaid remains with $1050-$700 = $<<1050-700=350>>350
-</div>
+| Human-Readable CoT | State Machine | Cipher |
+|--------------------|---------------|--------|
+| When Zaid spend 1/4 of his salary on rent, he parts with 1/4*$6000 = $1500. Car fuel will cost him 1/3*$6000 = $2000. Total expenses amount to $2000+$1500 = $3500. Car fuel and rent expenses combined amount to $3500. When he subtracts these expenses from his salary, he remains with $6000-$3500 = $2500. He donates half of the remaining amount, which totals 1/2*$2500 = $1250. The total expenses and donations amount to $1250+$3500 = $4750. When Zaid subtracts his expenses and donations from his salary, he remains with $6000-$4750 = $1250. He also gives his daughter $200, reducing the amount to $1250-$200 = $1050. Finally, after giving his wife $700, Zaid remains with $1050-$700 = $350 | S0[6000] → S1[⊖1/4=1500]✓ → S2[⊖1/3=2000]✓ → S3[1500⊕2000=3500]✓ → S4[6000⊖3500=2500]✓ → S5[⊘2=1250]✓ → S6[1250⊖200=1050]✓ → S7[1050⊖700=350]✓ | α κ6000 → θ1/4 → α κ1500 → θ1/3 → α κ2000 → ν=1500+2000=3500 → μ=6000-3500=2500 → φ1/2 → α κ1250 → δ: 200+700=900 → ν=1250-900=350 |
+| ✅ **Prediction: 350** | ✅ **Prediction: 350** | ✅ **Prediction: 350** |
+| 📏 401 tokens | 📏 129 tokens (⚡ 68% reduction) | 📏 109 tokens (⚡ 73% reduction) |
 
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 350</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 401</span>
-</div>
+> 📊 **Comments:** All methods produce correct answer. Cipher compresses reasoning slightly more efficiently.
 
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">State Machine</p>
-<div style="background-color: #d1ecf1; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-S0[6000] → S1[⊖1/4=1500]✓ → S2[⊖1/3=2000]✓ → S3[1500⊕2000=3500]✓ → S4[6000⊖3500=2500]✓ → S5[⊘2=1250]✓ → S6[1250⊖200=1050]✓ → S7[1050⊖700=350]✓
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 350</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 129</span><br>
-<span style="color: #0969da; font-weight: 600;">⚡ 68% reduction</span>
-</div>
-
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Cipher</p>
-<div style="background-color: #e7d4f7; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-α κ6000 → θ1/4 → α κ1500 → θ1/3 → α κ2000 → ν=1500+2000=3500 → μ=6000-3500=2500 → φ1/2 → α κ1250 → δ: 200+700=900 → ν=1250-900=350
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 350</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 109</span><br>
-<span style="color: #0969da; font-weight: 600;">⚡ 73% reduction</span>
-</div>
-
-</td>
-</tr>
-</table>
-
-<div style="background-color: #d4edda; padding: 10px; border-radius: 4px; margin-top: 10px; color: #24292e;">
-<strong style="color: #155724;">📊 Comments:</strong> All methods produce correct answer. Cipher compresses reasoning slightly more efficiently.
-</div>
-
-</div>
+---
 
 </details>
 
-
-
-####
 <details>
-<summary><strong>Example 2: Historical Reading Comprehension (DROP) - All Correct</strong></summary>
+<summary><strong>Example 2: Historical Reading Comprehension (DROP) - All Correct ✅</strong></summary>
 
-<div style="background-color: #f6f8fa; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 6px;">
+---
 
-<h3 style="color: #24292e; margin-top: 0;">✅ Example 2: Historical Reading Comprehension (DROP)</h3>
+**Question:**
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 10px;">Question:</p>
-<div style="background-color: white; padding: 10px; border-radius: 4px; margin: 10px 0; color: #24292e;">
-The long border between Burma and China had long been vaguely defined. The Ming dynasty first conquered Yunnan borderlands between 1380 and 1388, and stamped out local resistance by the mid-1440s. The Burmese control of the Shan States came in 1557 when King Bayinnaung of the Toungoo dynasty conquered all of the Shan States. The border was never demarcated in the modern sense, with local Shan sawbwas at the border regions paying tribute to both sides. The situation turned to China's favor in the 1730s when the Qing decided to impose a tighter control of Yunnan's border regions while the Burmese authority largely dissipated with the rapid decline of the Toungoo dynasty. What title of the Toungoo dynasty did Bayinnaung have? Provide ONLY a concise final answer, with no explanation, no punctuation, and no other text.
-</div>
+> The long border between Burma and China had long been vaguely defined. The Ming dynasty first conquered Yunnan borderlands between 1380 and 1388, and stamped out local resistance by the mid-1440s. The Burmese control of the Shan States came in 1557 when King Bayinnaung of the Toungoo dynasty conquered all of the Shan States. The border was never demarcated in the modern sense, with local Shan sawbwas at the border regions paying tribute to both sides. The situation turned to China's favor in the 1730s when the Qing decided to impose a tighter control of Yunnan's border regions while the Burmese authority largely dissipated with the rapid decline of the Toungoo dynasty. What title of the Toungoo dynasty did Bayinnaung have? Provide ONLY a concise final answer, with no explanation, no punctuation, and no other text.
 
-<p style="color: #24292e;"><strong>Ground Truth:</strong> King</p>
+**Ground Truth:** King
 
-<table style="width: 100%; margin: 15px 0;">
-<tr>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
+---
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Human-Readable CoT</p>
-<div style="background-color: #e8f5e9; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-Reasoning:
+| Human-Readable CoT | State Machine | Cipher |
+|--------------------|---------------|--------|
+| The question asks for the title of the Toungoo dynasty that Bayinnaung held. We are given historical context: Bayinnaung is described as "King Bayinnaung of the Toungoo dynasty," and the text states that he conquered all of the Shan States in 1557. The key point is that the title "King" is explicitly used in the text — "King Bayinnaung of the Toungoo dynasty." This is a direct and unambiguous reference to his title. In Burmese (Myanmar) history, the Toungoo dynasty was the ruling dynasty that ruled Burma from the 16th to the 17th century. Bayinnaung was the most prominent ruler of the Toungoo dynasty, known for unifying Burma and the Shan States. His title as "King" is consistent with the historical records of the time. The text does not use any alternative title such as "Emperor" or "Lord of the Land," and the phrase "King Bayinnaung of the Toungoo dynasty" is directly stated. Therefore, the title in question is simply "King." | S0[Bayinnaung → Toungoo dynasty] → S1[text: "King Bayinnaung"] → S2[✓ title = King] | α: Bayinnaung → β: Toungoo dynasty → γ: "King Bayinnaung of the Toungoo dynasty" → δ: extract title → ε: King |
+| ✅ **Prediction: King** | ✅ **Prediction: King** | ✅ **Prediction: King** |
+| 📏 289 tokens | 📏 37 tokens (⚡ 87% reduction) | 📏 71 tokens (⚡ 75% reduction) |
 
-The question asks for the title of the Toungoo dynasty that Bayinnaung held. We are given historical context: Bayinnaung is described as "King Bayinnaung of the Toungoo dynasty," and the text states that he conquered all of the Shan States in 1557. The key point is that the title "King" is explicitly used in the text — "King Bayinnaung of the Toungoo dynasty." This is a direct and unambiguous reference to his title.
+> 📊 **Comments:** All three methods succeed on this straightforward extraction task. Human-readable CoT seems to be referencing some historical context, which might or might not have aided the model in its answering process.
 
-In Burmese (Myanmar) history, the Toungoo dynasty (also spelled Tungoo) was the ruling dynasty that ruled Burma from the 16th to the 17th century. Bayinnaung was the most prominent ruler of the Toungoo dynasty, known for unifying Burma and the Shan States. His title as "King" (in Burmese, "kye") is consistent with the historical records of the time — the Burmese monarchy used the title "King" (or "Kye") for the sovereign ruler, especially in the context of the Toungoo period.
-
-The text does not use any alternative title such as "Emperor" or "Lord of the Land," and the phrase "King Bayinnaung of the Toungoo dynasty" is directly stated. Therefore, the title in question is simply "King."
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: King</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 289</span>
-</div>
-
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">State Machine</p>
-<div style="background-color: #d1ecf1; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-S0[Bayinnaung → Toungoo dynasty] → S1[text: "King Bayinnaung"] → S2[✓ title = King]
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: King</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 37</span><br>
-<span style="color: #0969da; font-weight: 600;">⚡ 87% reduction</span>
-</div>
-
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Cipher</p>
-<div style="background-color: #e7d4f7; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-α: Bayinnaung → β: Toungoo dynasty → γ: "King Bayinnaung of the Toungoo dynasty" → δ: extract title → ε: King
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: King</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 71</span><br>
-<span style="color: #0969da; font-weight: 600;">⚡ 75% reduction</span>
-</div>
-
-</td>
-</tr>
-</table>
-
-<div style="background-color: #d4edda; padding: 10px; border-radius: 4px; margin-top: 10px; color: #24292e;">
-<strong style="color: #155724;">📊 Comments:</strong> All three methods succeed on this straightforward extraction task. Human-readable CoT seems to be referencing some historical context, which might or might not have aided the model in its answering process.
-</div>
-
-</div>
+---
 
 </details>
 
-####
 <details>
-<summary><strong>Example 3: Basic Statistical Processing (DROP) - State Machine Solo Win</strong></summary>
-<div style="background-color: #fff8e1; border-left: 4px solid #ff9800; padding: 15px; margin: 20px 0; border-radius: 6px;">
+<summary><strong>Example 3: Basic Statistical Processing (DROP) - State Machine Solo Win ⚠️</strong></summary>
 
-<h3 style="color: #24292e; margin-top: 0;">⚠️ Example 3: Basic Statistical Processing (DROP)</h3>
+---
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 10px;">Question:</p>
-<div style="background-color: white; padding: 10px; border-radius: 4px; margin: 10px 0; color: #24292e;">
-As of the census of 2000, there were 19,234 people, 7,473 households, and 4,954 families residing in the village. The population density was 10,337.3 people per square mile (3,992.6/km\u00b2). There were 7,650 housing units at an average density of 4,111.5/sq mi (1,588.0/km\u00b2). The racial makeup of the village was 82.39% White (U.S. Census), 1.03% African American (U.S. Census), 0.29% Native American (U.S. Census), 4.52% Asian (U.S. Census), 0.04% Pacific Islander (U.S. Census), 3.93% from Race (United States Census), and 3.79% from two or more races. 13.03% of the population is Hispanic (U.S. Census) or Latino (U.S. Census) of any race. Which racial group was the second smallest? Provide ONLY a concise final answer, with no explanation, no punctuation, and no other text.
-</div>
+**Question:**
 
-<p style="color: #24292e;"><strong>Ground Truth:</strong> Native American</p>
+> As of the census of 2000, there were 19,234 people, 7,473 households, and 4,954 families residing in the village. The population density was 10,337.3 people per square mile (3,992.6/km²). There were 7,650 housing units at an average density of 4,111.5/sq mi (1,588.0/km²). The racial makeup of the village was 82.39% White (U.S. Census), 1.03% African American (U.S. Census), 0.29% Native American (U.S. Census), 4.52% Asian (U.S. Census), 0.04% Pacific Islander (U.S. Census), 3.93% from Race (United States Census), and 3.79% from two or more races. 13.03% of the population is Hispanic (U.S. Census) or Latino (U.S. Census) of any race. Which racial group was the second smallest? Provide ONLY a concise final answer, with no explanation, no punctuation, and no other text.
 
-<table style="width: 100%; margin: 15px 0;">
-<tr>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
+**Ground Truth:** Native American
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Human-Readable CoT</p>
-<div style="background-color: #e8f5e9; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-We are given the racial makeup of the village as follows (from the 2000 census):
+---
 
-- 82.39% White  
-- 1.03% African American  
-- 0.29% Native American  
-- 4.52% Asian  
-- 0.04% Pacific Islander  
-- 3.93% from Race (United States Census) — this likely refers to "Other" or unspecified race, but it's listed separately; however, the phrasing "3.93% from Race" is ambiguous and likely a misstatement. In standard U.S. Census terminology, "from Race" is not a standard category. It may be a typo or mislabeling. Given the context, it's likely meant to be "from two or more races" or another category. But the key is to identify the smallest groups.
+| Human-Readable CoT | State Machine | Cipher |
+|--------------------|---------------|--------|
+| We are given the racial makeup of the village as follows (from the 2000 census): 82.39% White, 1.03% African American, 0.29% Native American, 4.52% Asian, 0.04% Pacific Islander, 3.93% from Race (United States Census) — this likely refers to "Other" or unspecified race... the phrasing "3.93% from Race" is ambiguous and likely a misstatement. In standard U.S. Census terminology, "from Race" is not a standard category... Let's check if the percentages add up: 82.39 + 1.03 = 83.42 + 0.29 = 83.71 + 4.52 = 88.23 + 0.04 = 88.27 + 3.93 = 92.20 + 3.79 = 95.99%. So total is about 96%, which suggests some rounding or mislabeling. But the key is: which group is the second smallest? From the list: Pacific Islander: 0.04% → smallest, Native American: 0.29% → next smallest... 5. Native American (0 *(truncated at max tokens)* | S0[White:82.39%, 2+ races:3.79%, Asian:4.52%, Native Am:0.29%, Pacific Islander:0.04%, African Am:1.03%, Hispanic:13.03%] → S1[0.04% < 0.29% < 1.03% < 3.79% < 4.52% < 82.39%] → S2[2nd smallest:0.29% → Native American] | α: κ82.39% (White), λ1.03% (African American), μ0.29% (Native American), ν4.52% (Asian), ξ0.04% (Pacific Islander), π3.93% (Race), ψ3.79% (Two or more races) → Sort: ξ0.04%, μ0.29%, π3.79%, ψ3.79%, ν4.52%, λ1.03%, α82.39% → Second smallest: π3.79% → Answer: Race |
+| ❌ **Prediction: N/A** | ✅ **Prediction: Native American** | ❌ **Prediction: Race** |
+| 📏 1023 tokens (Max) | 📏 146 tokens | 📏 139 tokens |
 
-Let’s list the percentages clearly:
+> ⚠️ **Comments:** Admittedly, this is a strange question from the DROP dataset which seems to have a typo, as pointed out by the human-reasoning CoT. This red herring, intentional or not, distracted the human-reasoning CoT from getting to an answer within 1024 thinking tokens, although it seemingly almost gets there in the end. Both State Machine and Cipher used sorting pretty efficiently, with the former getting the right answer.
 
-- White: 82.39% → largest
-- African American: 1.03% → small
-- Native American: 0.29% → smaller
-- Asian: 4.52% → larger than AA, smaller than White
-- Pacific Islander: 0.04% → very small
-- "from Race": 3.93% — this is unclear. It says "3.93% from Race", which is not standard. Possibly a misstatement. If it's meant to be "from two or more races", that would be a separate category. But the text says: "3.93% from Race (United States Census)" — this is likely a misphrasing. In standard U.S. Census data, "from two or more races" is a separate category, and the percentages should add up to 100%.
-
-Let’s check if the percentages add up:
-
-White: 82.39  
-African American: 1.03  
-Native American: 0.29  
-Asian: 4.52  
-Pacific Islander: 0.04  
-"from Race": 3.93  
-Two or more races: 3.79% (as stated separately)
-
-Wait — the text says:  
-"82.39% White (U.S. Census), 1.03% African American, 0.29% Native American, 4.52% Asian, 0.04% Pacific Islander, 3.93% from Race, and 3.79% from two or more races."
-
-This seems to be a breakdown of race, and the percentages should sum to 100%.
-
-Let’s add them:
-
-82.39 + 1.03 = 83.42  
-+ 0.29 = 83.71  
-+ 4.52 = 88.23  
-+ 0.04 = 88.27  
-+ 3.93 = 92.20  
-+ 3.79 = 95.99%
-
-So total is about 96%, which suggests some rounding or mislabeling.
-
-But the key is: which group is the second smallest?
-
-We are to identify the **second smallest** racial group.
-
-From the list:
-
-- Pacific Islander: 0.04% → smallest
-- Native American: 0.29% → next smallest
-- Then Asian (4.52%), African American (1.03%), etc.
-
-Wait — 0.04% (Pacific Islander) is the smallest.
-
-Next smallest: 0.29% (Native American)
-
-Then: 1.03% (African American)
-
-Then: 3.79% (two or more races)
-
-Then: 3.93% (from Race) — this is likely a misstatement. If "from Race" is meant to be a category, it's unclear. But if we take the data as given, the percentages are:
-
-- Pacific Islander: 0.04%
-- Native American: 0.29%
-- African American: 1.03%
-- Asian: 4.52%
-- Two or more races: 3.79%
-- "from Race": 3.93%
-
-But the "from Race" group (3.93%) is larger than the Asian group (4.52%)? No — 3.93 < 4.52.
-
-So the order of size:
-
-1. White (82.39%) — largest  
-2. Asian (4.52%) — large  
-3. Two or more races (3.79%) — medium  
-4. African American (1.03%) — small  
-5. Native American (0
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #d32f2f; font-weight: bold; font-size: 1.05em;">✗ Prediction: N/A</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 1023 (Max)</span>
-</div>
-
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">State Machine</p>
-<div style="background-color: #d1ecf1; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-S0[White:82.39%, 2+ races:3.79%, Asian:4.52%, 2 or more:3.79%, Native Am:0.29%, Pacific Islander:0.04%, African Am:1.03%, Hispanic:13.03%] → S1[0.04% < 0.29% < 1.03% < 3.79% < 4.52% < 82.39% < 13.03%] → S2[2nd smallest:0.29% → Native American] ✗
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: Native American</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 146</span>
-</div>
-
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Cipher</p>
-<div style="background-color: #ffebee; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-α: κ82.39% (White), λ1.03% (African American), μ0.29% (Native American), ν4.52% (Asian), ξ0.04% (Pacific Islander), π3.93% (Race), ψ3.79% (Two or more races) → Sort: ξ0.04%, μ0.29%, π3.79%, ψ3.79%, ν4.52%, λ1.03%, α82.39% → Second smallest: π3.79% → Answer: Race
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #d32f2f; font-weight: bold; font-size: 1.05em;">✗ Prediction: Race</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 139</span>
-</div>
-
-</td>
-</tr>
-</table>
-
-<div style="background-color: #fff3e0; padding: 10px; border-radius: 4px; margin-top: 10px; color: #24292e; border: 1px solid #ffb74d;">
-<strong style="color: #e65100;">📊 Comments:</strong> Admittedly, this is a strange question from the DROP dataset which seems to have a typo, as pointed out by the human-reasoning CoT. This red herring, intentional or not, distracted the human-reasoning CoT from getting to an answer within 1024 thinking tokens, although it seemingly almost gets there in the end. Both State Machine and Cipher used sorting pretty efficiently, with the former getting the right answer.
-</div>
-
-</div>
-</details>
-
-####
-<details>
-<summary><strong>Example 4: Self-Correcting State Machine (GSM8k) - All Correct</strong></summary>
-
-<div style="background-color: #f6f8fa; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 6px;">
-
-<h3 style="color: #24292e; margin-top: 0;">✅ Example 4: Self-Correcting State Machine (GSM8k)</h3>
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 10px;">Question:</p>
-<div style="background-color: white; padding: 10px; border-radius: 4px; margin: 10px 0; color: #24292e;">
-Farmer Brown has 20 animals on his farm, all either chickens or cows. They have a total of 70 legs, all together. How many of the animals are chickens? Provide ONLY a final numerical answer, with no explanation, no units, no punctuation, and no other text.
-</div>
-
-<p style="color: #24292e;"><strong>Ground Truth:</strong> 5</p>
-
-<table style="width: 100%; margin: 15px 0;">
-<tr>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Human-Readable CoT</p>
-<div style="background-color: #fff3cd; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-Let C be the number of chickens.
-There are 20-C cows.
-The cows have 4*(20-C) legs.
-The cows have 2*C legs.
-The cows have 2*C+4*(20-C)=70 legs.
-2C+80-4C=70.
-2C=10.
-C=<<5=5>>5
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 5</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 80</span>
-</div>
-
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">State Machine</p>
-<div style="background-color: #d1ecf1; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-S0[total:20, legs:70] → S1[20−x −x=70] → S2[20−2x=70] → S3[−2x=50] → S4[x=−25] → S5[invalid] ❌
-
-Wait — error in logic. Let's correct:
-
-Let x be the number of cows. Then 20−x is the number of chickens.
-
-Total legs: 2x + 2(20−x) = 70  
-Simplify: 2x + 40 − 2x = 70  
-→ 40 = 70 → contradiction.
-
-Wait — that can't be. Let's try again.
-
-Let x be the number of cows. Each cow has 4 legs, each chicken has 2.
-
-So: 4x + 2(20−x) = 70  
-Expand: 4x + 40 − 2x = 70  
-Combine: 2x + 40 = 70  
-Subtract: 2x = 30  
-Divide: x = 15
-
-Then chickens: 20−15 = 5
-
-But wait — 15 cows ×4 = 60, 5 chickens ×2 = 10 → 60+10=70. Correct.
-
-So answer is 5.
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 5</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 399</span><br>
-<span style="color: #d32f2f; font-weight: 600;">⚠️ 399% increase</span>
-</div>
-
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Cipher</p>
-<div style="background-color: #e7d4f7; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-α κ20 → β λ70 → γ κ20-x → δ κ2x + 4(20-x) =70 → 2x +80-4x=70 → -2x=-10 → x=5 → α κ5
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 5</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 60</span><br>
-<span style="color: #0969da; font-weight: 600;">⚡ 25% reduction</span>
-</div>
-
-</td>
-</tr>
-</table>
-
-<div style="background-color: #d4edda; padding: 10px; border-radius: 4px; margin-top: 10px; color: #24292e;">
-<strong style="color: #155724;">📊 Comments:</strong> A bit of a not-so-trivial algebra question this time. State Machine exhibits a fascinating behavior: it made an initial error when reasoning in its compressed syntax, but detected it mid-reasoning, and started backtracking and reasoning out in human-readable reasoning. Its use of human-readable CoT as a fallback is quite curious - this could suggest that the model can handle multiple reasoning grammars, and learn to use the most appropriate or efficient one depending on the task at hand.
-</div>
-
-</div>
+---
 
 </details>
 
-
-####
 <details>
-<summary><strong>Example 5: Cipher Repetitive Loop Failure (DROP) - Human-Readable Solo Win</strong></summary>
+<summary><strong>Example 4: Self-Correcting State Machine (GSM8k) - All Correct ✅</strong></summary>
 
-<div style="background-color: #ffebee; border-left: 4px solid #d32f2f; padding: 15px; margin: 20px 0; border-radius: 6px;">
+---
 
-<h3 style="color: #24292e; margin-top: 0;">❌ Example 5: Cipher Stuck in Repetitive Loop</h3>
+**Question:**
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 10px;">Question:</p>
-<div style="background-color: white; padding: 10px; border-radius: 4px; margin: 10px 0; color: #24292e;">
-Hoping to rebound from their road loss to the Patriots, the Rams went home for a Week 9 NFC West duel with the Arizona Cardinals. In the first quarter, St. Louis struck first as QB Marc Bulger completed an 80-yard TD pass to WR Derek Stanley. In the second quarter, the Cardinals responded with a vengeance as safety Antrel Rolle returned an interception 40 yards for a touchdown, kicker Neil Rackers got a 36-yard field goal, RB Tim Hightower got a 30-yard TD run, and former Rams QB Kurt Warner completed a 56-yard TD pass to WR Jerheme Urban. In the third quarter, Arizona increased its lead as Warner completed a 7-yard TD pass to WR Anquan Boldin. In the fourth quarter, the Rams tried to come back as Bulger completed a 3-yard TD pass to WR Torry Holt (with a failed 2-point conversion). However, the Cardinals flew away as Rackers nailed a 30-yard field goal. During the game, the Rams inducted former Head Coach Dick Vermeil (who helped the franchise win Super Bowl XXXIV) onto the Rams Ring of Honor. Which team got the first turnover? Provide ONLY a concise final answer, with no explanation, no punctuation, and no other text.
-</div>
+> Farmer Brown has 20 animals on his farm, all either chickens or cows. They have a total of 70 legs, all together. How many of the animals are chickens? Provide ONLY a final numerical answer, with no explanation, no units, no punctuation, and no other text.
 
-<p style="color: #24292e;"><strong>Ground Truth:</strong> Cardinals</p>
+**Ground Truth:** 5
 
-<table style="width: 100%; margin: 15px 0;">
-<tr>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
+---
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Human-Readable CoT</p>
-<div style="background-color: #e8f5e9; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-Reasoning:
+| Human-Readable CoT | State Machine | Cipher |
+|--------------------|---------------|--------|
+| Let C be the number of chickens. There are 20-C cows. The cows have 4*(20-C) legs. The chickens have 2*C legs. The total is 2*C+4*(20-C)=70 legs. 2C+80-4C=70. 2C=10. C=5 | S0[total:20, legs:70] → S1[20−x −x=70] → S2[20−2x=70] → S3[−2x=50] → S4[x=−25] → S5[invalid] ❌ Wait — error in logic. Let's correct: Let x be the number of cows. Then 20−x is the number of chickens. Total legs: 2x + 2(20−x) = 70 → 40 = 70 → contradiction. Wait — that can't be. Let's try again. Let x be the number of cows. Each cow has 4 legs, each chicken has 2. So: 4x + 2(20−x) = 70 → 2x + 40 = 70 → 2x = 30 → x = 15. Then chickens: 20−15 = 5. Verify: 15 cows ×4 = 60, 5 chickens ×2 = 10 → 60+10=70. Correct. So answer is 5. | α κ20 → β λ70 → γ κ20-x → δ κ2x + 4(20-x) =70 → 2x +80-4x=70 → -2x=-10 → x=5 → α κ5 |
+| ✅ **Prediction: 5** | ✅ **Prediction: 5** | ✅ **Prediction: 5** |
+| 📏 80 tokens | 📏 399 tokens (⚠️ 399% increase) | 📏 60 tokens (⚡ 25% reduction) |
 
-To determine which team got the first turnover, we need to examine the sequence of events in the game as described.
+> 📊 **Comments:** A bit of a not-so-trivial algebra question this time. State Machine exhibits a fascinating behavior: it made an initial error when reasoning in its compressed syntax, but detected it mid-reasoning, and started backtracking and reasoning out in human-readable reasoning. Its use of human-readable CoT as a fallback is quite curious - this could suggest that the model can handle multiple reasoning grammars, and learn to use the most appropriate or efficient one depending on the task at hand.
 
-The game begins with the Rams scoring first in the first quarter: QB Marc Bulger completes an 80-yard TD pass to WR Derek Stanley. This is a touchdown, not a turnover.
+---
 
-In the second quarter, the Cardinals respond with a vengeance. The text states: "safety Antrel Rolle returned an interception 40 yards for a touchdown." This indicates that the Cardinals recovered an interception — a turnover — and scored on it.
+</details>
 
-Since the Rams scored first (a touchdown), and the Cardinals responded with an interception return (a turnover), the Cardinals got the first turnover.
+<details>
+<summary><strong>Example 5: Cipher Repetitive Loop Failure (DROP) - Human-Readable Solo Win ❌</strong></summary>
 
-Note: The Rams did not have a turnover in the first quarter. The first turnover occurred in the second quarter when Antrel Rolle returned an interception.
+---
 
-Therefore, the Cardinals got the first turnover.
-</div>
+**Question:**
 
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: cardinals</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 184</span>
-</div>
+> Hoping to rebound from their road loss to the Patriots, the Rams went home for a Week 9 NFC West duel with the Arizona Cardinals. In the first quarter, St. Louis struck first as QB Marc Bulger completed an 80-yard TD pass to WR Derek Stanley. In the second quarter, the Cardinals responded with a vengeance as safety Antrel Rolle returned an interception 40 yards for a touchdown, kicker Neil Rackers got a 36-yard field goal, RB Tim Hightower got a 30-yard TD run, and former Rams QB Kurt Warner completed a 56-yard TD pass to WR Jerheme Urban. In the third quarter, Arizona increased its lead as Warner completed a 7-yard TD pass to WR Anquan Boldin. In the fourth quarter, the Rams tried to come back as Bulger completed a 3-yard TD pass to WR Torry Holt (with a failed 2-point conversion). However, the Cardinals flew away as Rackers nailed a 30-yard field goal. During the game, the Rams inducted former Head Coach Dick Vermeil (who helped the franchise win Super Bowl XXXIV) onto the Rams Ring of Honor. Which team got the first turnover? Provide ONLY a concise final answer, with no explanation, no punctuation, and no other text.
 
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
+**Ground Truth:** Cardinals
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">State Machine</p>
-<div style="background-color: #fff3e0; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-S0[Q: first turnover?] → S1[1Q: Bulger→80yd TD (no TO)] → S2[2Q: Rolle→40yd INT TD (TO)]✓ → S3[Cardinals got first TO] ⟹ S4[✓Arizona]
-</div>
+---
 
-<div style="margin-top: 10px;">
-<span style="color: #ff9800; font-weight: bold; font-size: 1.05em;">⚠️ Prediction: Arizona</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 63</span><br>
-<span style="color: #666;">(Correct team, wrong format)</span>
-</div>
+| Human-Readable CoT | State Machine | Cipher |
+|--------------------|---------------|--------|
+| To determine which team got the first turnover, we need to examine the sequence of events in the game as described. The game begins with the Rams scoring first in the first quarter: QB Marc Bulger completes an 80-yard TD pass to WR Derek Stanley. This is a touchdown, not a turnover. In the second quarter, the Cardinals respond with a vengeance. The text states: "safety Antrel Rolle returned an interception 40 yards for a touchdown." This indicates that the Cardinals recovered an interception — a turnover — and scored on it. Since the Rams scored first (a touchdown), and the Cardinals responded with an interception return (a turnover), the Cardinals got the first turnover. | S0[Q: first turnover?] → S1[1Q: Bulger→80yd TD (no TO)] → S2[2Q: Rolle→40yd INT TD (TO)]✓ → S3[Cardinals got first TO] ⟹ S4[✓Arizona] | α: λ80yd TD pass → β: κ36yd FG, μ30yd TD, ν56yd TD → ξ: λ7yd TD → α: λ3yd TD → κ30yd FG → α κ80yd TD → β κ36yd FG... *(repeating loop ~20 times until max tokens)* |
+| ✅ **Prediction: cardinals** | ⚠️ **Prediction: Arizona** *(correct team, wrong format)* | ❌ **Prediction: rams** 🔄 *(stuck in infinite loop)* |
+| 📏 184 tokens | 📏 63 tokens | 📏 1000 tokens (Max) |
 
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px;">
+> ❌ **Comments:** Cipher suffered a catastrophic failure, getting stuck in a repetitive symbolic loop that consumed all 1000 tokens without ever addressing the actual question. This exemplifies how overly compressed symbolic reasoning can degenerate into meaningless gibberish without a halting condition when the system loses semantic grounding.
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Cipher</p>
-<div style="background-color: #ffebee; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-α: λ80yd TD pass → β: κ36yd FG, μ30yd TD, ν56yd TD → ξ: λ7yd TD → α: λ3yd TD → κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #d32f2f; font-weight: bold; font-size: 1.05em;">✗ Prediction: rams</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 1000 (Max)</span><br>
-<span style="color: #d32f2f; font-weight: 600;">🔄 Stuck in infinite loop</span>
-</div>
-
-</td>
-</tr>
-</table>
-
-<div style="background-color: #ffcdd2; padding: 10px; border-radius: 4px; margin-top: 10px; color: #24292e; border: 1px solid #ef5350;">
-<strong style="color: #b71c1c;">📊 Comments:</strong> <strong>Cipher</strong> suffered a catastrophic failure, getting stuck in a repetitive symbolic loop that consumed all 1000 tokens without ever addressing the actual question (finding the first turnover). The pattern <code>α κ80yd TD → β κ36yd FG, μ30yd TD, ν56yd TD → β κ30yd FG → α κ80yd TD...</code> repeated ~20 times until hitting the token limit. The symbolic compression system had <strong>no halting condition</strong> and couldn't break out of the cycle. It ultimately guessed "rams" (wrong). <strong>Human CoT</strong> correctly identified the interception as the first turnover. <strong>State Machine</strong> got the right team (Cardinals/Arizona) but answered with the city name instead of team name. This exemplifies how <strong>overly compressed symbolic reasoning can degenerate into meaningless gibberish</strong> when the system loses semantic grounding.
-</div>
-
-</div>
+---
 
 </details>
 
@@ -693,9 +337,7 @@ S0[Q: first turnover?] → S1[1Q: Bulger→80yd TD (no TO)] → S2[2Q: Rolle→4
 
 ### Training Dynamics
 
-We analyze training curves across all three reasoning formats on DROP to understand compression learnability and optimization characteristics. Training curves are generally similar for GSM8k, with greater training stability likely due to task simplicity and consistency. We plot raw NLL values without smoothing below.
-
-#### Human-Readable CoT Training
+We analyze training curves across all three reasoning formats on DROP to understand compression learnability and optimization characteristics. Training curves are generally similar for GSM8k, with greater training stability likely due to task simplicity and consistency. We plot raw NLL values without smoothing in Figures 2–4.
 
 #### Figure 2: Training dynamics for human-readable Chain-of-Thought on DROP (rank 32, LR 5e-4). Test Sample Size n = 20.
 
@@ -703,9 +345,7 @@ We analyze training curves across all three reasoning formats on DROP to underst
 <img src="results/plots/sft_drop_32_0.0005.png" width="50%">
 </p>
 
-From Figure 2, we see that human-readable reasoning exhibits stable optimization dynamics. Train and test NLL decrease smoothly from ~0.6 to ~0.1, demonstrating successful learning of natural language reasoning patterns specific to this task. Reasoning length remains stable at ~350-450 tokens throughout training. Test accuracy fluctuates between 65-80% but shows no systematic improvement beyond step 200.
-
-#### State Machine CoT Training
+Figure 2 shows that human-readable reasoning exhibits stable optimization dynamics. Train and test NLL decrease smoothly from ~0.6 to ~0.1, demonstrating successful learning of natural language reasoning patterns specific to this task. Reasoning length remains stable at ~350-450 tokens throughout training. Test accuracy fluctuates between 65-80% but shows no systematic improvement beyond step 200.
 
 #### Figure 3: Training dynamics for state machine compressed reasoning on DROP (rank 32, LR 5e-4). Test Sample Size n = 20.
 
@@ -713,11 +353,8 @@ From Figure 2, we see that human-readable reasoning exhibits stable optimization
 <img src="results/plots/sft_drop_sm1_32_0.0005.png" width="50%">
 </p>
 
+Like the standard human-readable reasoning, Figure 3 shows that state machine compression demonstrates **highly stable training dynamics**. NLL decreases steadily while reasoning length remains remarkably constant at ~50 tokens throughout all 1,200 training steps. This stability suggests that the state machine's structured transitions (S₀ → S₁ → S₂) provide clear gradient signals that the model can optimize consistently. Test accuracy plateaus around 70% within 200 steps, matching the pattern observed for human-readable CoT.
 
-Like the standard human-readable reasoning, state machine compression demonstrates **highly stable training dynamics**. NLL decreases steadily while reasoning length remains remarkably constant at ~50 tokens throughout all 1,200 training steps. This stability suggests that the state machine's structured transitions (S₀ → S₁ → S₂) provide clear gradient signals that the model can optimize consistently. Test accuracy plateaus around 70% within 200 steps, matching the pattern observed for human-readable CoT.
-
-
-#### Cipher CoT Training
 
 #### Figure 4: Training dynamics for cipher compressed reasoning on DROP (rank 32, LR 5e-4). Test Sample Size n = 20.
 
@@ -725,7 +362,7 @@ Like the standard human-readable reasoning, state machine compression demonstrat
 <img src="results/plots/sft_drop_cipher1_32_0.0005.png" width="50%">
 </p>
 
-Cipher compression reveals **significant optimization instability**. While NLL decreases similarly to other methods, the reasoning length (orange line) exhibits dramatic fluctuations, spiking unpredictably from ~50 tokens to 200+ tokens at various points during training (steps ~200, ~600, ~1100). These instabilities suggest **difficulty with gradient control**—the model struggles to maintain consistent symbolic token generation, occasionally producing verbose or degenerate reasoning traces.
+In contrast, Figure 4 reveals that cipher compression exhibits **significant optimization instability**. While NLL decreases similarly to other methods, the reasoning length (orange line) exhibits dramatic fluctuations, spiking unpredictably from ~50 tokens to 200+ tokens at various points during training (steps ~200, ~600, ~1100). These instabilities suggest **difficulty with gradient control**—the model struggles to maintain consistent symbolic token generation, occasionally producing verbose or degenerate reasoning traces.
 
 #### Discussion
 
@@ -744,7 +381,7 @@ State machine notation (S₀, →, brackets) may better align with the base mode
 **2. Rapid Performance Plateau**
 
 All three methods show accuracy and reasoning length saturation within 200 steps, despite continued NLL improvements through step 1,200. On the one hand, this pattern reinforces our initial finding that **DROP's reasoning requirements are limited**—once basic patterns are learned, additional optimization yields minimal accuracy gains. On the other hand, this observation raises a more fundamental question about the extent to which explicit CoT reasoning, compressed or otherwise, meaningfully contributes to model performance.
-f
+
 Returning to our theoretical framework from Section 2, we can formalize this question: does improving $P(z|x)$ (the model's ability to generate reasoning traces) significantly impact $P(y|x) = P(y|x,z)P(z|x)$ (the final answer accuracy)? A more general formulation is:
 
 $$P(y|x) =\sum_{z\in Z} P(y|x,f(z))P(z|x)$$
@@ -757,7 +394,7 @@ More provocatively, recent work has suggested that $f(\cdot)$ may simply measure
 
 ### Ablation Studies
 
-**Performance.** We conducted ablation studies on the GSM8k dataset using the state machine reasoning configuration, focusing on the key LoRA hyperparameters of rank (16, 32, 64) and learning rate (1e-4, 5e-4, 1e-3). We first picked a base learning rate of 5e-4 as suggested by recent research on optimal LoRA learning rate as a function of model size [^10]. As for rank, we began our experiments with 32 with the assumption that learning a new reasoning syntax might require more ranks than the more common choices of 8 or 16. Table 2 below summarizes test set evaluaton results.
+**Performance.** We conducted ablation studies on the GSM8k dataset using the state machine reasoning configuration, focusing on the key LoRA hyperparameters of rank (16, 32, 64) and learning rate (1e-4, 5e-4, 1e-3). We first picked a base learning rate of 5e-4 as suggested by recent research on optimal LoRA learning rate as a function of model size [^10]. As for rank, we began our experiments with 32 with the assumption that learning a new reasoning syntax might require more ranks than the more common choices of 8 or 16. Table 2 below summarizes test set evaluation results.
 
 
 #### Table 2: LoRA Rank and Learning Rate Ablation (State Machine, GSM8K)
@@ -777,8 +414,8 @@ The most immediate observation is that LR = 1e-3 consistently diverges, producin
 #### Figure 5: LoRA Rank and Learning Rate Ablation (State Machine, GSM8K), Test NLL Convergence (left) and Final Test NLL (right)
 
 <div style="display: flex; justify-content: center; gap: 20px;">
-  <img src="results/plots/gsm8k_sm1_ablation_test_nll_sweep.png" width="42%">
-  <img src="results/plots/gsm8k_sm1_ablation_final_nll.png" width="42%">
+  <img src="results/plots/gsm8k_sm1_ablation_test_nll_sweep.png" width="45%">
+  <img src="results/plots/gsm8k_sm1_ablation_final_nll.png" width="45%">
 </div>
 
 
@@ -824,206 +461,78 @@ In contrast, our pre-compressed representations exhibit more modest efficiency g
 
 These examples showcase the RL-trained models producing concise reasoning traces while still arriving at correct answers.
 
-####
 <details>
-<summary><strong>Example 6: Mathematical Reasoning (GSM8K) - All Correct</strong></summary>
+<summary><strong>Example 6: Mathematical Reasoning (GSM8K) - All Correct ✅</strong></summary>
 
-<div style="background-color: #f6f8fa; border-left: 4px solid #4caf50; padding: 15px; margin: 20px 0; border-radius: 6px;">
+---
 
-<h3 style="color: #24292e; margin-top: 0;">✅ Example 6: Mathematical Reasoning</h3>
+**Question:**
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 10px;">Question:</p>
-<div style="background-color: white; padding: 10px; border-radius: 4px; margin: 10px 0; color: #24292e;">
-Johnny took his allowance of $20 and added an extra $10 to it.  He then invested this sum of money, which tripled in a year.  How much money did he have after a year? Provide ONLY a final numerical answer, with no explanation, no units, no punctuation, and no other text.</div>
+> Johnny took his allowance of $20 and added an extra $10 to it. He then invested this sum of money, which tripled in a year. How much money did he have after a year? Provide ONLY a final numerical answer, with no explanation, no units, no punctuation, and no other text.
 
-<p style="color: #24292e;"><strong>Ground Truth:</strong> 90</p>
+**Ground Truth:** 90
 
-<table style="width: 100%; margin: 15px 0;">
-<tr>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
+---
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Human-Readable CoT</p>
-<div style="background-color: #e3f2fd; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-20+10=30
-30*3=90
-</div>
+| Human-Readable CoT | Cipher | State Machine |
+|--------------------|--------|---------------|
+| 20+10=30, 30*3=90 | α κ$20+$10=$30 → α θ3 → α κ30×3=$90 | S0[20+10=30] → ⊗3=90✓ |
+| ✅ **Prediction: 90** | ✅ **Prediction: 90** | ✅ **Prediction: 90** |
+| 📏 17 tokens | 📏 27 tokens | 📏 21 tokens |
 
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 90</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 17</span><br>
-</div>
+> 📊 **Comments:** Standard CoT stripped everything but the core equations, yielding the most efficient reasoning trace.
 
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Cipher</p>
-<div style="background-color: #e7d4f7; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-α κ$20+$10=$30 → α θ3 → α κ30×3=$90
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 90</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 27</span><br>
-</div>
-
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">State Machine</p>
-<div style="background-color: #d1ecf1; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-S0[20+10=30] → ⊗3=90✓
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 90</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 21</span><br>
-</div>
-
-</td>
-</tr>
-</table>
-
-<div style="background-color: #e3f2fd; padding: 10px; border-radius: 4px; margin-top: 10px; color: #24292e; border: 1px solid #2196f3;">
-<strong style="color: #1565c0;">📊 Comments:</strong> Standard CoT stripped everything but the core equations, yielding the most efficient reasoning trace.
-</div>
-
-</div>
+---
 
 </details>
 
-####
 <details>
-<summary><strong>Example 7: Sports Commentary Extraction (DROP) - All Correct</strong></summary>
+<summary><strong>Example 7: Sports Commentary Extraction (DROP) - All Correct ✅</strong></summary>
 
-<div style="background-color: #f6f8fa; border-left: 4px solid #4caf50; padding: 15px; margin: 20px 0; border-radius: 6px;">
+---
 
-<h3 style="color: #24292e; margin-top: 0;">✅ Example 7: Sports Commentary Extraction</h3>
+**Question:**
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 10px;">Question:</p>
-<div style="background-color: white; padding: 10px; border-radius: 4px; margin: 10px 0; color: #24292e;">
-In week 11, the Lions hosted their NFC North Division rivals the Green Bay Packers. The only scoring play of the first quarter was when Detroit's Jason Hanson kicked a 30-yard field goal. The Packers got on the board in the second quarter when Jermichael Finley caught a 20-yard touchdown pass from Aaron Rodgers. The Lions responded with a 1-yard touchdown run by Mikel Leshoure. In the third quarter, the Packers' M. D. Jennings intercepted a Matthew Stafford pass and ran it back 72 yards for a touchdown. The Lions responded with a Calvin Johnson 25-yard touchdown pass from Matthew Stafford. The Lions scored their final points in the fourth quarter when Jason Hanson kicked a 27-yard field goal. The Packers then scored a touchdown when Randall Cobb caught a 22-yard pass from Aaron Rodgers, and capped off their win with a 39-yard field goal by Mason Crosby. How many total points were scored in the first quarter? Provide ONLY a concise final answer, with no explanation, no punctuation, and no other text.</div>
+> In week 11, the Lions hosted their NFC North Division rivals the Green Bay Packers. The only scoring play of the first quarter was when Detroit's Jason Hanson kicked a 30-yard field goal. The Packers got on the board in the second quarter when Jermichael Finley caught a 20-yard touchdown pass from Aaron Rodgers. The Lions responded with a 1-yard touchdown run by Mikel Leshoure. In the third quarter, the Packers' M. D. Jennings intercepted a Matthew Stafford pass and ran it back 72 yards for a touchdown. The Lions responded with a Calvin Johnson 25-yard touchdown pass from Matthew Stafford. The Lions scored their final points in the fourth quarter when Jason Hanson kicked a 27-yard field goal. The Packers then scored a touchdown when Randall Cobb caught a 22-yard pass from Aaron Rodgers, and capped off their win with a 39-yard field goal by Mason Crosby. How many total points were scored in the first quarter? Provide ONLY a concise final answer, with no explanation, no punctuation, and no other text.
 
-<p style="color: #24292e;"><strong>Ground Truth:</strong> 3</p>
+**Ground Truth:** 3
 
-<table style="width: 100%; margin: 15px 0;">
-<tr>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
+---
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Human-Readable CoT</p>
-<div style="background-color: #e8f5e9; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-Reasoning: In the first quarter, only two field goals were scored — 30-yard and 27-yard — but only the 30-yard one was in the first quarter. So only 3 points (field goal) were scored.
-</div>
+| Human-Readable CoT | Cipher | State Machine |
+|--------------------|--------|---------------|
+| Reasoning: In the first quarter, only two field goals were scored — 30-yard and 27-yard — but only the 30-yard one was in the first quarter. So only 3 points (field goal) were scored. | α: κ30-yard FG → 3 points | S0[1 FG = 3 pts]✓ |
+| ✅ **Prediction: 3** | ✅ **Prediction: 3** | ✅ **Prediction: 3** |
+| 📏 51 tokens | 📏 12 tokens | 📏 12 tokens |
 
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 3</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 51</span><br>
-</div>
+> 📊 **Comments:** For reference, the SFT-only standard CoT model produced a reasoning trace of 142 tokens. The SFT-only Cipher and State Machine models produced 15 and 21 tokens respectively.
 
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Cipher</p>
-<div style="background-color: #e7d4f7; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-α: κ30-yard FG → 3 points
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 3</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 12</span><br>
-</div>
-
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">State Machine</p>
-<div style="background-color: #d1ecf1; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-S0[1 FG = 3 pts]✓
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 3</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 12</span><br>
-</div>
-
-</td>
-</tr>
-</table>
-
-<div style="background-color: #e8f5e9; padding: 10px; border-radius: 4px; margin-top: 10px; color: #24292e; border: 1px solid #4caf50;">
-<strong style="color: #2e7d32;">📊 Comments:</strong> For reference, the SFT-only standard CoT model produced a reasoning trace of 142 tokens. The SFT-only Cipher and State Machine models produced 15 and 21 tokens respectively.
-</div>
-
-</div>
+---
 
 </details>
 
-####
 <details>
-<summary><strong>Example 8: Statistical Extraction (DROP) - Only Standard CoT Correct</strong></summary>
+<summary><strong>Example 8: Statistical Extraction (DROP) - Only Standard CoT Correct ⚠️</strong></summary>
 
-<div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 15px; margin: 20px 0; border-radius: 6px;">
+---
 
-<h3 style="color: #24292e; margin-top: 0;">⚠️ Example 8: Statistical Extraction (DROP)</h3>
+**Question:**
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 10px;">Question:</p>
-<div style="background-color: white; padding: 10px; border-radius: 4px; margin: 10px 0; color: #24292e;">
-There were 664,594 households out of which 24.35% had children under the age of 18 living with them, 46.28% were Marriage living together, 11.68% had a female householder with no husband present, and 37.40% were non-families. 30.11% of all households were made up of individuals and 14.70% (4.02% male and 10.68% female) had someone living alone who was 65 years of age or older. The average household size was 2.39 and the average family size was 2.97. How many in percent of households were families? Provide ONLY a concise final answer, with no explanation, no punctuation, and no other text.
+> There were 664,594 households out of which 24.35% had children under the age of 18 living with them, 46.28% were Marriage living together, 11.68% had a female householder with no husband present, and 37.40% were non-families. 30.11% of all households were made up of individuals and 14.70% (4.02% male and 10.68% female) had someone living alone who was 65 years of age or older. The average household size was 2.39 and the average family size was 2.97. How many in percent of households were families? Provide ONLY a concise final answer, with no explanation, no punctuation, and no other text.
 
-</div>
+**Ground Truth:** 62.60
 
+---
 
-<p style="color: #24292e;"><strong>Ground Truth:</strong> 62.60</p>
+| Human-Readable CoT | Cipher | State Machine |
+|--------------------|--------|---------------|
+| Reasoning: Households that are families are those that are not non-families. Given 37.40% were non-families, the remaining percentage were families: 100% - 37.40% = 62.60%. | κ24.35% → κ46.28% → κ11.68% → κ37.40% → κ30.11% → κ14.70% → μ=100−30.11−14.70=55.19 | S0[avg family size=2.97, avg household=2.39] → S1[family ≠ household] → S2[⊛ 2.97>2.39] ⟹ S3[✓family proportion=29.7%] |
+| ✅ **Prediction: 62.60** *(only correct)* | ❌ **Prediction: 55.19** | ❌ **Prediction: 29.7** |
+| 📏 59 tokens | 📏 72 tokens | 📏 59 tokens |
 
-<table style="width: 100%; margin: 15px 0;">
-<tr>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
+> ⚠️ **Comments:** For reference, the SFT-only standard CoT model produced a reasoning trace of 188 tokens. Both non-standard CoT struggled with information bombardment.
 
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Human-Readable CoT</p>
-<div style="background-color: #e8f5e9; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-Reasoning: Households that are families are those that are not non-families. Given 37.40% were non-families, the remaining percentage were families: 100% - 37.40% = 62.60%.
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #28a745; font-weight: bold; font-size: 1.05em;">✓ Prediction: 62.60</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 59</span><br>
-<span style="color: #28a745; font-weight: 600;">✓ ONLY CORRECT ANSWER</span>
-</div>
-
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px; border-right: 1px solid #e1e4e8;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">Cipher</p>
-<div style="background-color: #ffcdd2; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-κ24.35% → κ46.28% → κ11.68% → κ37.40% → κ30.11% → κ14.70% → μ=100−30.11−14.70=55.19
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #d32f2f; font-weight: bold; font-size: 1.05em;">✗ Prediction: 55.19</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 72</span>
-</div>
-
-</td>
-<td width="33%" style="vertical-align: top; padding: 10px;">
-
-<p style="color: #24292e; font-weight: bold; margin-bottom: 8px;">State Machine</p>
-<div style="background-color: #ffcdd2; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #24292e;">
-S0[avg family size=2.97, avg household=2.39] → S1[family ≠ household] → S2[⊛ 2.97>2.39] ⟹ S3[✓family proportion=29.7%]
-</div>
-
-<div style="margin-top: 10px;">
-<span style="color: #d32f2f; font-weight: bold; font-size: 1.05em;">✗ Prediction: 29.7</span><br>
-<span style="color: #24292e; font-weight: 600;">📏 Tokens: 59</span>
-</div>
-
-</td>
-</tr>
-</table>
-
-<div style="background-color: #e8f5e9; padding: 10px; border-radius: 4px; margin-top: 10px; color: #24292e; border: 1px solid #4caf50;">
-<strong style="color: #2e7d32;">📊 Comments:</strong> For reference, the SFT-only standard CoT model produced a reasoning trace of 188 tokens. Both non-standard CoT struggled with information bombardment.
-</div>
-
-</div>
+---
 
 </details>
 
@@ -1035,8 +544,8 @@ Figure 6 below illustrates RL training trajectories for standard CoT on both dat
 #### Figure 6: RL Training Dynamics for Standard CoT Reasoning, GSM8K (left) and DROP (right). Test Sample Size n = 20.
 
 <div style="display: flex; justify-content: center; gap: 20px;">
-  <img src="results/plots/rl_SFT_gsm8k_gsm8k_32_ppo_0.0002_300.png" width="50%">
-  <img src="results/plots/rl_SFT_drop_drop_32_0.0005_ppo_0.0002_700.png" width="50%">
+  <img src="results/plots/rl_SFT_gsm8k_gsm8k_32_ppo_0.0002_300.png" width="45%">
+  <img src="results/plots/rl_SFT_drop_drop_32_0.0005_ppo_0.0002_700.png" width="45%">
 </div>
 
 These results raise a provocative question about the necessity of compressed representations. If RL can reduce human-readable reasoning by 50-83% while maintaining or even improving accuracy, the additional complexity of introducing specialized symbolic grammars may be unnecessary for many applications. Standard CoT offers inherent advantages: it requires no synthetic data generation for compression schemes, maintains human interpretability throughout training, and as our results demonstrate, compresses effectively under length-aware RL. While cipher and state machine achieve lower absolute token counts, the engineering overhead of designing, generating, and validating symbolic representations may not justify the marginal efficiency gains, particularly given their accuracy costs on more complex reasoning tasks like GSM8K.
@@ -1044,14 +553,13 @@ These results raise a provocative question about the necessity of compressed rep
 ---
 ### Ablation Studies
 
-Due to computational constraints, our RL ablations are less systematic than those conducted for SFT. However, we performed targeted experiments to understand the stability requirements for different reasoning formats, as the challenges we encountered during initial training runs proved informative about the brittleness of RL optimization for reasoning tasks.
+Due to computational constraints, our RL ablations are less systematic than those conducted for SFT. However, we performed targeted experiments to understand the stability requirements for different reasoning formats, as the challenges we encountered during initial training runs proved informative about the brittleness of RL optimization for reasoning tasks. Figure 7 compares reward trajectories across different configurations.
 
 #### Figure 7: RL Reward Comparison on GSM8K
 
 <p align="center">
 <img src="results/plots/gsm8k_rl_ablation_reward_sweep.png" width="50%">
 </p>
-
 
 Objective clipping proved essential for preventing catastrophic failures. Our initial experiments without clipping (green line) resulted in complete reward collapse around step 100, likely due to high-variance reward signals where poor-quality traces produce destructive policy updates. Implementing PPO-style objective clipping [^11] stabilized standard CoT training at LR 2e-4 (blue line). 
 
@@ -1083,7 +591,7 @@ This finding has practical implications. Compressed symbolic reasoning achieves 
 
 Reasoning efficiency is achievable through multiple pathways—symbolic grammars, RL-optimized natural language, or hybrid approaches. The optimal choice depends on task complexity, interpretability requirements, and deployment constraints. What remains clear is that verbose explanatory reasoning, while useful for human pedagogy, is computationally inefficient—models can achieve comparable or better task performance with substantially more concise representations, whether symbolic or streamlined natural language.
 
-# **7. Acknowledgements and References ???** 
+# **7. References** 
 
 [^1]: DeepSeek-AI, “DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning,” arXiv preprint, 2025. [Online]. Available: https://arxiv.org/abs/2501.12948.
 
@@ -1093,16 +601,16 @@ Reasoning efficiency is achievable through multiple pathways—symbolic grammars
 
 [^4]: H. Pan et al., “Training Large Language Models to Reason in a Continuous Latent Space,” arXiv preprint, 2024. [Online]. Available: https://arxiv.org/abs/2412.06769.
 
-[^5]: Authors, “CODI,” arXiv preprint, 2025. [Online]. Available: https://arxiv.org/abs/2502.21074.
+[^5]: Z. Shen et al., “CODI: Compressing Chain-of-Thought into Continuous Space via Self-Distillation,” arXiv preprint, 2025. [Online]. Available: https://arxiv.org/abs/2502.21074.
 
-[^6]: Qwen Team, “Qwen3 Technical Report,” arXiv preprint, 2025. [Online]. Available: https://arxiv.org/abs/2505.09388. ↩
+[^6]: Qwen Team, “Qwen3 Technical Report,” arXiv preprint, 2025. [Online]. Available: https://arxiv.org/abs/2505.09388.
 
-[^7] GSM8K
+[^7]: K. Cobbe et al., “Training Verifiers to Solve Math Word Problems,” arXiv preprint, 2021. [Online]. Available: https://arxiv.org/abs/2110.14168.
 
-[^8] DROP
+[^8]: D. Dua et al., “DROP: A Reading Comprehension Benchmark Requiring Discrete Reasoning Over Paragraphs,” arXiv preprint, 2019. [Online]. Available: https://arxiv.org/abs/1903.00161.
 
-[^9] GRPO
+[^9]: Z. Shao et al., “DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models,” arXiv preprint, 2024. [Online]. Available: https://arxiv.org/abs/2402.03300.
 
-[^10] Schulman, John and Thinking Machines Lab, "LoRA Without Regret", Thinking Machines Lab: Connectionism, Sep 2025.
+[^10]: Schulman, John and Thinking Machines Lab, "LoRA Without Regret", Thinking Machines Lab: Connectionism, Sep 2025.
 
-[^11] PPO
+[^11]: J. Schulman et al., “Proximal Policy Optimization Algorithms,” arXiv preprint, 2017. [Online]. Available: https://arxiv.org/abs/1707.06347.

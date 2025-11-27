@@ -7,3 +7,4 @@ checkpoints/
 *.zip
 *.key
 archived
+.venv/

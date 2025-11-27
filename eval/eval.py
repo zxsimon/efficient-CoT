@@ -172,7 +172,7 @@ if __name__ == "__main__":
         dataset=args.dataset,
         batch_size=args.batch_size, 
         total_examples=args.total_examples, 
-        reasoning=args.reasoning, 
+        reasoning=not args.no_reasoning, 
         show=args.show,
         logger=logger)
 
@@ -186,7 +186,7 @@ if __name__ == "__main__":
     print(f"Total evaluated: {total_evaluated}.")
     print(f"Pass@1 score: {sum(scores) / total_evaluated:.2f}")
     
-    if args.reasoning:
+    if not args.no_reasoning:
     
         reason_lens_mean = reason_lens.mean().item()
         reason_lens_std = reason_lens.std().item()

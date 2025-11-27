@@ -1,17 +1,17 @@
 # Efficient Chain-of-Thought
 
-> **Can we decouple reasoning from human language to save tokens without sacrificing accuracy?**
+> **Motivating Question: Can we decouple reasoning from human language to save tokens without sacrificing accuracy?**
 
-This project shows that *compressed* reasoning traces—taught via LoRA fine-tuning—can match natural-language chain-of-thought while using **up to 80 % fewer tokens**.
+Standard chain-of-thought prompting produces verbose, human-readable reasoning traces. This project explores whether models can instead learn *compressed* symbolic reasoning—preserving the logical structure of CoT while drastically reducing token count.
 
-| Dataset | Approach | Accuracy / F1 | Token Reduction |
-|---------|----------|---------------|-----------------|
-| GSM8K   | State Machine | 86.7 % (vs 90.9 %) | ~50 % |
-| DROP    | State Machine | 69.4 F1 (vs 71.2) | ~82 % |
+**Key findings:**
+- Compressed reasoning (via LoRA fine-tuning) retains **95–97 %** of standard CoT accuracy while using **50–80 % fewer tokens**.
+- We evaluate two compression schemes: **Cipher** (Greek-letter symbolic encoding) and **State Machine** (explicit state transitions like `S0 → S1 → S2`).
+- Reinforcement learning (GRPO) on top of SFT further optimizes for both correctness and brevity.
 
-We experiment with two compression schemes—**Cipher** and **State Machine**—and further optimize with reinforcement learning (GRPO) for brevity + correctness. Built on [Tinker](https://thinkingmachines.ai/tinker/).
+📄 **Full methodology & results:** [report.md](report.md)
 
-📄 **Full write-up:** [report.md](report.md)
+🤖 Built on [Tinker](https://thinkingmachines.ai/tinker/)
 
 ---
 
@@ -55,7 +55,7 @@ We experiment with two compression schemes—**Cipher** and **State Machine**—
 
 ---
 
-## Quick Start
+## Quick Start: Run Your Own Experiments!
 
 ### 1. Setup
 
@@ -74,10 +74,12 @@ export TINKER_API_KEY=sk-...
 Spin up a local inference endpoint (e.g., LM Studio at `http://127.0.0.1:1234`), then:
 
 ```bash
-python -m dataset.generate --dataset gsm8k --approach sm1 cipher1
+python -m dataset.generate --dataset gsm8k --approach sm1
 ```
 
 Prompts live in `dataset/prompts.jsonl`; outputs land in `dataset/{name}_{approach}_{split}.jsonl`.
+
+Synthetic datasets used in our report are included in `dataset/`. Feel free to generate your own synthetic datasets by appending to `dataset/prompts.jsonl`, adhering to the existing prompt format.
 
 ### 3. Train
 
@@ -91,7 +93,7 @@ python -m train.sft --dataset gsm8k_sm1 --lr 5e-4 --rank 32
 
 ```bash
 # Requires a prior SFT run e.g. logs/sft/gsm8k_sm1_32_0.0005. 
-# Otherwise, leave --model flag empty to RL a base model
+# Otherwise, leave --model flag empty to RL a base model, and specify --dataset {gsm8k/drop}
 python -m train.rl --model gsm8k_sm1_32_0.0005 --lr 1e-4
 ```
 
@@ -100,21 +102,22 @@ Logs & checkpoints → `logs/{sft,rl}/...`
 All other hyparameters can be provided as additional CLI flags or edited directly in `train/sft.py` and `train/rl.py`.
 
 ### 4. Evaluate & Plot
+We provide the same functions used for evaluation and plotting in our report:
 
 ```bash
 # Download weights first: tinker checkpoint download {state_path}
 # Then save into checkpoints/ e.g. checkpoints/gsm8k_sm1_32_5e-4
 python -m eval.eval --checkpoint gsm8k_sm1_32_5e-4 --batch_size 8
 
-# Training curves
-python -m results.plots --sft
+# Summarizes statistics from logs/eval/... generated from previous function
 python -m results.evals --prefix eval_gsm8k
+
+# Plots training curves from logs/{sft,rl}/...
+python -m results.plots --sft
 ```
 
 ---
 
-## All in all…
-
 <p align="center">
-  <img src="https://media.tenor.com/images/cc242f1691c5783b2ecd23d7779c8a13/tenor.gif" alt="Why waste time say lot word when few word do trick" width="300"/>
+  <img src="https://media1.tenor.com/m/IsYdPRq7bjcAAAAd/why-waste-time-when-few-word-do-trick.gif" alt="Why waste time say lot word when few word do trick" width="300"/>
 </p>
