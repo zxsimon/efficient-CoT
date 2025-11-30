@@ -1,6 +1,10 @@
 # Efficient Chain-of-Thought
 
-> **Motivating Question: Can we decouple reasoning from human language to save tokens without sacrificing accuracy?**
+**Motivating Question: Can we decouple reasoning from human language to save tokens without sacrificing accuracy?**
+
+<p align="center">
+  <img src="https://media1.tenor.com/m/IsYdPRq7bjcAAAAd/why-waste-time-when-few-word-do-trick.gif" alt="Why waste time say lot word when few word do trick" width="300"/>
+</p>
 
 Standard chain-of-thought prompting produces verbose, human-readable reasoning traces. This project explores whether models can instead learn *compressed* symbolic reasoning—preserving the logical structure of CoT while drastically reducing token count.
 
@@ -115,9 +119,3 @@ python -m results.evals --prefix eval_gsm8k
 # Plots training curves from logs/{sft,rl}/...
 python -m results.plots --sft
 ```
-
----
-
-<p align="center">
-  <img src="https://media1.tenor.com/m/IsYdPRq7bjcAAAAd/why-waste-time-when-few-word-do-trick.gif" alt="Why waste time say lot word when few word do trick" width="300"/>
-</p>

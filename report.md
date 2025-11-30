@@ -67,7 +67,7 @@ This work occupies a middle ground between explicit human-readable and fully imp
 
 # **3. Methodology**
 
-Our approach consists of two training phases: (1) supervised fine-tuning (SFT) to teach the model compressed reasoning grammars, and (2) reinforcement learning (RL) to optimize for both accuracy and token efficiency. We use Low-Rank Adaptation (LoRA) throughout to enable efficient parameter updates while preserving the base model's capabilities. All experiments use **Qwen3-8B** [^6] as the base model, selected for its strong reasoning capabilities and computational feasibility.
+Our approach consists of two training phases: (1) supervised fine-tuning (SFT) to teach the model compressed reasoning grammars, and (2) reinforcement learning (RL) to optimize for both accuracy and token efficiency. We use Low-Rank Adaptation (LoRA) throughout to enable efficient parameter updates while preserving the base model's capabilities. All experiments use Qwen3-8B [^6] as the base model, selected for its strong reasoning capabilities and computational feasibility.
 
 ## **3.1 Dataset Selection and Generation**
 
@@ -85,7 +85,7 @@ After comparing alternatives such as MMLU, CommonsenseQA, StrategyQA, ProntoQA, 
 
 During preliminary experiments, we observed an interesting characteristic of DROP: our SFT-trained base model achieved 63% F1 score without any reasoning traces, compared to 71% F1 with reasoning — a difference of only 8 percentage points. This contrasts with GSM8K, where no-reasoning achieves 70% while reasoning achieves 91% - a 21 point gap. The smaller reasoning benefit in DROP suggests that many questions can be answered through pattern matching or direct extraction, which has important implications for our analysis: improvements in F1 score may be noisier and harder to attribute definitively to reasoning efficiency gains. We include DROP results to explore how compressed reasoning performs across different reasoning requirements, while acknowledging that the signal may be weaker than in GSM8K.
 
-**Synthetic Data Generation.** For both datasets, we generated compressed reasoning traces using **Qwen3-30B-A3B-2507**, a larger and more capable model in the Qwen family. We experimented with two compression strategies, illustrated through the following GSM8K example:
+**Synthetic Data Generation.** For both datasets, we generated compressed reasoning traces using Qwen3-30B-A3B-2507, a larger and more capable model in the Qwen family. We experimented with two compression strategies, illustrated through the following GSM8K example:
 
 **Example Question:**
 > Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May?
@@ -107,7 +107,7 @@ Our compression strategies transform this reasoning as follows:
 
 *Notation:* $S_i$ (state i), [operation], → (transition), ✓ (final answer)
 
-Both strategies preserve the logical structure and computational steps of the original reasoning while achieving significant token reduction (20-25% for the above GSM8k example). We also generated a **no-reasoning baseline** where the model outputs empty thinking blocks `<think>\n\n</think>`, allowing us to isolate the value of explicit reasoning versus direct answer generation. Importantly, while we ensured internal consistency within each problem's reasoning trace, we did not enforce strict symbol usage consistency *across* problems. This design choice allows the model to potentially discover its own optimal reasoning grammar during training, rather than being constrained to the specific symbolic conventions used in the synthetic data generation.
+Both strategies preserve the logical structure and computational steps of the original reasoning while achieving significant token reduction (20-25% for the above GSM8k example). We also generated a no-reasoning baseline where the model outputs empty thinking blocks `<think>\n\n</think>`, allowing us to isolate the value of explicit reasoning versus direct answer generation. Importantly, while we ensured internal consistency within each problem's reasoning trace, we did not enforce strict symbol usage consistency *across* problems. This design choice allows the model to potentially discover its own optimal reasoning grammar during training, rather than being constrained to the specific symbolic conventions used in the synthetic data generation.
 
 **Controlling for Selection Bias in DROP Dataset Curation.** The DROP dataset presented unique curation challenges due to its diverse question types and answer formats. To ensure high-quality reasoning traces, we applied an F1 score threshold (F1 > 0.8) when generating synthetic reasoning with Qwen3-30B, filtering for cases where the model demonstrated strong comprehension of the passage and question. However, this filtering process introduces a potential selection bias: the curated training set may not be representative of the full DROP distribution. To address this concern, we took two precautionary measures:
 
@@ -353,7 +353,7 @@ Figure 2 shows that human-readable reasoning exhibits stable optimization dynami
 <img src="results/plots/sft_drop_sm1_32_0.0005.png" width="50%">
 </p>
 
-Like the standard human-readable reasoning, Figure 3 shows that state machine compression demonstrates **highly stable training dynamics**. NLL decreases steadily while reasoning length remains remarkably constant at ~50 tokens throughout all 1,200 training steps. This stability suggests that the state machine's structured transitions (S₀ → S₁ → S₂) provide clear gradient signals that the model can optimize consistently. Test accuracy plateaus around 70% within 200 steps, matching the pattern observed for human-readable CoT.
+Like the standard human-readable reasoning, Figure 3 shows that state machine compression demonstrates highly stable training dynamics. NLL decreases steadily while reasoning length remains remarkably constant at ~50 tokens throughout all 1,200 training steps. This stability suggests that the state machine's structured transitions (S₀ → S₁ → S₂) provide clear gradient signals that the model can optimize consistently. Test accuracy plateaus around 70% within 200 steps, matching the pattern observed for human-readable CoT.
 
 
 #### Figure 4: Training dynamics for cipher compressed reasoning on DROP (rank 32, LR 5e-4). Test Sample Size n = 20.
@@ -362,25 +362,25 @@ Like the standard human-readable reasoning, Figure 3 shows that state machine co
 <img src="results/plots/sft_drop_cipher1_32_0.0005.png" width="50%">
 </p>
 
-In contrast, Figure 4 reveals that cipher compression exhibits **significant optimization instability**. While NLL decreases similarly to other methods, the reasoning length (orange line) exhibits dramatic fluctuations, spiking unpredictably from ~50 tokens to 200+ tokens at various points during training (steps ~200, ~600, ~1100). These instabilities suggest **difficulty with gradient control**—the model struggles to maintain consistent symbolic token generation, occasionally producing verbose or degenerate reasoning traces.
+In contrast, Figure 4 reveals that cipher compression exhibits significant optimization instability. While NLL decreases similarly to other methods, the reasoning length (orange line) exhibits dramatic fluctuations, spiking unpredictably from ~50 tokens to 200+ tokens at various points during training (steps ~200, ~600, ~1100). These instabilities suggest difficulty with gradient control—the model struggles to maintain consistent symbolic token generation, occasionally producing verbose or degenerate reasoning traces.
 
 #### Discussion
 
 **1. Grammar Learnability Varies by Compression Strategy**
 
-The stark contrast between state machine stability and cipher instability demonstrates that **not all compression schemes are equally learnable**. We hypothesize that the ease of learning a new reasoning grammar depends on two factors:
+The stark contrast between state machine stability and cipher instability demonstrates that not all compression schemes are equally learnable. We hypothesize that the ease of learning a new reasoning grammar depends on two factors:
 
-***Factor 1: Dataset Quality and Consistency***
+*Factor 1: Dataset Quality and Consistency*
 
 Our synthetic reasoning dataset may contain inconsistent reasoning patterns across examples. State machine's rigid structure (S₀ → S₁ → S₂) enforces consistency, providing stable training signals. In contrast, cipher's more flexible symbol usage may amplify dataset inconsistencies, leading to noisy gradients and training instabilities. Furthermore, the quality of the human reasoning data used in generating synthetic reasoning is also important, since we are essentially conducting a form of knowledge distillation through our training process.
 
-***Factor 2: Transferability from Pre-Trained Knowledge***
+*Factor 2: Transferability from Pre-Trained Knowledge*
 
-State machine notation (S₀, →, brackets) may better align with the base model's pre-existing knowledge of mathematical and logical notation learned during pre-training. Cipher's Greek letters (α, κ, θ) represent a more dramatic departure from natural language, potentially requiring more complete "re-learning" of token semantics, which manifests as optimization instability. Future compression strategies should consider **gradient stability** and **alignment with pre-trained knowledge** as important design criteria.
+State machine notation (S₀, →, brackets) may better align with the base model's pre-existing knowledge of mathematical and logical notation learned during pre-training. Cipher's Greek letters (α, κ, θ) represent a more dramatic departure from natural language, potentially requiring more complete "re-learning" of token semantics, which manifests as optimization instability. Future compression strategies should consider gradient stability and alignment with pre-trained knowledge as important design criteria.
 
 **2. Rapid Performance Plateau**
 
-All three methods show accuracy and reasoning length saturation within 200 steps, despite continued NLL improvements through step 1,200. On the one hand, this pattern reinforces our initial finding that **DROP's reasoning requirements are limited**—once basic patterns are learned, additional optimization yields minimal accuracy gains. On the other hand, this observation raises a more fundamental question about the extent to which explicit CoT reasoning, compressed or otherwise, meaningfully contributes to model performance.
+All three methods show accuracy and reasoning length saturation within 200 steps, despite continued NLL improvements through step 1,200. On the one hand, this pattern reinforces our initial finding that DROP's reasoning requirements are limited—once basic patterns are learned, additional optimization yields minimal accuracy gains. On the other hand, this observation raises a more fundamental question about the extent to which explicit CoT reasoning, compressed or otherwise, meaningfully contributes to model performance.
 
 Returning to our theoretical framework from Section 2, we can formalize this question: does improving $P(z|x)$ (the model's ability to generate reasoning traces) significantly impact $P(y|x) = P(y|x,z)P(z|x)$ (the final answer accuracy)? A more general formulation is:
 
@@ -419,9 +419,9 @@ The most immediate observation is that LR = 1e-3 consistently diverges, producin
 </div>
 
 
-Figure 5 shows several patterns in compressed grammar acquisition. The plot on the left shows how **learning rate substantially affects training stability**. In particular, LR 1e-3 causes divergence across all ranks, while LR 5e-4 and 1e-4 both converge reliably to similar final NLL (~0.05-0.06). The instability at higher learning rates suggests that learning novel symbolic representations may require more conservative optimization than standard fine-tuning. Comparing between the two stable learning rates, we see that **LR 5e-4 achieves faster early convergence**, reaching lower NLL within the first 100 examples compared to LR 1e-4. 
+Figure 5 shows several patterns in compressed grammar acquisition. The plot on the left shows how learning rate substantially affects training stability. In particular, LR 1e-3 causes divergence across all ranks, while LR 5e-4 and 1e-4 both converge reliably to similar final NLL (~0.05-0.06). The instability at higher learning rates suggests that learning novel symbolic representations may require more conservative optimization than standard fine-tuning. Comparing between the two stable learning rates, we see that LR 5e-4 achieves faster early convergence, reaching lower NLL within the first 100 examples compared to LR 1e-4. 
 
-On the right, we see that **rank appears to minimally impact final convergence** when learning rate is stable, with all three ranks achieving similar final NLL (variance <0.01). Combined with rank 16's superior test accuracy (Table 2), this suggests lower-rank adaptations may offer efficiency benefits without sacrificing optimization quality, though more systematic investigation would be needed to confirm this relationship, such as on the DROP dataset.
+On the right, we see that rank appears to minimally impact final convergence when learning rate is stable, with all three ranks achieving similar final NLL (variance <0.01). Combined with rank 16's superior test accuracy (Table 2), this suggests lower-rank adaptations may offer efficiency benefits without sacrificing optimization quality, though more systematic investigation would be needed to confirm this relationship, such as on the DROP dataset.
 
 
 ## **4.2 Reinforcement Learning**
